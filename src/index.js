@@ -1,33 +1,21 @@
-import './main.scss'
-import gameImage from './assets/images/sprites/game-image.png'
+//import './main.scss'
+import kontra from 'kontra'
 
-console.log('Hello World')
+let {canvas, context} = kontra.init()
 
-const testESNext = (Math.random() > .5 ? 'ES2020Working' : null)
-const testESNext2 = {
-  child: {
-    node: null,
-  },
-}
+let asteroid = kontra.Sprite({
+  type: 'asteroid',
+  x: 50,
+  y: 50,
+  dx: Math.random() * 4 - 2,
+  dy: Math.random() * 4 - 2,
+  radius: 30,
+  render() {
+    this.context.strokeStyle = 'white'
+    this.context.beginPath()
+    this.context.arc(0, 0, this.radius, 0, Math.PI*2)
+    this.context.stroke()
+  }
+})
 
-const method = () => {
-  console.log('Hello Method')
-}
-
-method()
-
-console.log(testESNext ?? 'ES2020 Is Working')
-console.log(testESNext2?.child?.node?.other)
-try {
-  console.log(testESNext2?.child?.node.other)
-}
-catch (e) {
-  console.log('Caught the error', e.toString())
-}
-
-// Using an imported image
-const imgEl = document.getElementById('jsImage')
-const image = document.createElement('img')
-
-image.src = gameImage
-imgEl.appendChild(image)
+asteroid.render()

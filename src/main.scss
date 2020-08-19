@@ -1,5 +1,7 @@
 body {
-  background-color: red;
+  display: block;
+  margin: 0;
+  background-color: black;
 }
 
 #wrapper {
@@ -11,4 +13,12 @@ body {
   width: 400px;
   height: 200px;
   background-image: url('./assets/images/sprites/game-image-3.png');
+}
+
+canvas {
+  display: block;
+  height: 100%;
+  margin: auto auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
