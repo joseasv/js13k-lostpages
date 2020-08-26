@@ -39,6 +39,6 @@
   },
   "dependencies": {
     "js13k-ecs": "^0.1.4",
-    "kontra": "^7.0.0"
+    "kontra": "^7.1.2"
   }
 }
