@@ -100,21 +100,46 @@ const spriteImage = new Image();
 spriteImage.src = spritesheet;
 
 spriteImage.onload = () => {
+
+  const flippedcanvas = document.createElement("canvas");
+  const flippedcontext = flippedcanvas.getContext("2d");
+  flippedcontext.translate(32, 0)
+  flippedcontext.scale(-1,1)
+  flippedcontext.drawImage(spriteImage, 0, 0, 32, 8, 0, 0, 32, 8);
+  
+  const totalanimcanvas = document.createElement("canvas");
+  totalanimcanvas.height = 16
+  totalanimcanvas.width = 32
+  const totalanimcontext = totalanimcanvas.getContext('2d')
+  totalanimcontext.drawImage(spriteImage, 0, 0, 32, 8, 0, 0, 32, 8)
+  totalanimcontext.drawImage(flippedcanvas, 0, 0, 32, 8, 0, 8, 32, 8)
+
   let ssheet = SpriteSheet({
-    image: spriteImage,
+    image: totalanimcanvas,
     frameWidth: 8,
     frameHeight: 8,
     animations: {
-      walk: {
-        frames: [2, 3],
-        frameRate: 5,
-        loop: true,
-      },
       idle: {
         frames: [0, 1],
         frameRate: 1,
         loop: true,
       },
+      walk: {
+        frames: [2, 3],
+        frameRate: 5,
+        loop: true
+      },
+      fidle: {
+        frames: [7, 6],
+        frameRate: 1,
+        loop: true,
+      },
+      fwalk: {
+        frames: [5, 4],
+        frameRate: 5,
+        loop: true
+      },
+      
     },
   });
 
@@ -183,29 +208,31 @@ spriteImage.onload = () => {
         if (this.isMoving) {
           //console.log("isMoving");
           this.animStarted = false
-          this.currentAnimation = this.animations["walk"]
+          if (this.flipped) {
+            this.currentAnimation = this.animations["fwalk"]
+          } else {
+            this.currentAnimation = this.animations["walk"]
+          }
+          
           
         } else {
-          if (!this.animStarted) {
-            this.animations['idle'].reset()
-            this.animStarted = true
+          if (this.flipped) {
+            if (!this.animStarted) {
+              this.animations['fidle'].reset()
+              this.animStarted = true
+            }
+            this.currentAnimation = this.animations["fidle"]
+          } else {
+            if (!this.animStarted) {
+              this.animations['idle'].reset()
+              this.animStarted = true
+            }
+            this.currentAnimation = this.animations["idle"]
           }
-          this.currentAnimation = this.animations["idle"]
+          
           //this.sprite.playAnimation("idle");
         }
-        let offset = 0
-        if (this.flipped) {
-          //console.log("FLIP");
-          this.anchor.x = 1
-          this.scaleX = -1;
-          
-          //this.animations.currentAnimation
-          
-          offset = 8
-        } else {
-          this.scaleX = 1;
-          this.anchor.x = 0
-        }
+        
 
         
         this.currentAnimation.update()
@@ -218,8 +245,10 @@ spriteImage.onload = () => {
   mapcontext.drawImage(spriteImage, 0, 8, 24, 8, 0, 0, 24, 8);
 
   const maptilesprites = document.createElement("canvas");
+  maptilesprites.width = 8
+  maptilesprites.height = 8
   const maptilespritescontext = maptilesprites.getContext("2d");
-  maptilespritescontext.drawImage(spriteImage, 32, 0, 8, 8, 0, 0, 8, 8);
+  
 
   let landId = 0
   for (let i = 0; i < 24; i++) {
@@ -227,7 +256,23 @@ spriteImage.onload = () => {
       const pixelData = mapcontext.getImageData(i, j, 1, 1).data;
       if (pixelData[0] === 245) {
         //console.log("drawing at ", i, " and ", j);
-      
+        
+        maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
+        const chance = Math.random()
+        if (chance > 0.5) {
+          console.log('sprite 1', chance)
+          maptilespritescontext.drawImage(spriteImage, 32, 0, 8, 8, 0, 0, 8, 8);
+        } else {
+          console.log('sprite 2', chance)
+          maptilespritescontext.drawImage(spriteImage, 40, 0, 8, 8, 0, 0, 8, 8);
+        }
+        if (chance > 0.5) {
+          console.log('sprite 1', chance)
+          maptilespritescontext.translate(8, 0)
+          maptilespritescontext.scale(-1, 1);
+        } 
+        let temp = new Image()
+        temp.src = maptilesprites.toDataURL("image/png")
         landSprite.push(
           Sprite({
             id: landId++,
@@ -236,9 +281,10 @@ spriteImage.onload = () => {
             x: i * 8,
             y: j * 8,
             floor: true,
-            image: maptilesprites,
+            image: temp,
           })
         )
+        //
       }
     }
   }
