@@ -7,7 +7,8 @@ import {
   keyPressed,
   Scene,
   Quadtree,
-  Vector
+  Vector,
+  GameObject
 } from "kontra";
 import spritesheet from "./assets/images/sprites/spritesheet.png";
 
@@ -21,83 +22,31 @@ const quad = Quadtree({
 
 let gameScene = undefined
 
-let spriteTest = undefined;
+
 let landSprite = [];
 let pc = undefined
-/*let pc = {
-  x: 10,
-  y: 10,
-  sprite: undefined,
-  isMoving: false,
-  flipped: false,
-  animStarted: false,
-  update: function () {
-    
-    this.isMoving = false;
-    if (keyPressed("left")) {
-      //console.log("pressing left")
-      this.isMoving = true;
-      this.flipped = true;
-      this.x -= 1;
-    }
-
-    if (keyPressed("right")) {
-      //console.log("pressing right")
-      this.isMoving = true;
-      this.flipped = false;
-      this.x += 1;
-    }
-
-    let col = false
-    if (landSprite.length > 0) {
-      for (let i = 0; i < landSprite.length && !col; i++) {
-        let land = landSprite[i]
-        if (this.y + 8 >= land.y && 
-          this.x + 5 >= land.x && this.x + 3 <= land.x + 8) {
-          //console.log("col in sprite", land.id, "this.x", this.x, " :land.x", land.x)
-          col = true
-          this.y = land.y - 8
-        } 
-      }
-    }
-
-    if (!col) {
-      //console.log(col)
-      this.y += 0.5
-    }
-
-    this.sprite.update();
-    
-  },
-  render: function () {
-    if (this.sprite !== undefined) {
-      this.sprite.x = this.x;
-      this.sprite.y = this.y;
-
-      if (this.isMoving) {
-        //console.log("isMoving");
-        this.animStarted = false
-        this.sprite.playAnimation("walk");
-        
-      } else {
-        if (!this.animStarted) {
-          //this.sprite.animations['idle'].reset()
-          this.animStarted = true
-        }
-        this.sprite.playAnimation("idle");
-      }
-
-      if (this.flipped) {
-        //console.log("FLIP");
-        this.sprite.scaleX = -1;
-        this.sprite.x = this.x + this.sprite.width;
-      } else {
-        this.sprite.scaleX = 1;
-      }
-      this.sprite.render();
-    }
+let camFocus = GameObject({update: function () {
+  //console.log("camFocus x", this.x)
+  if (pc.x >= this.x + 16) {
+    console.log("moving focus")
+    this.x += pc.x - (this.x + 16)
   }
-};*/
+
+  if (pc.x <= this.x - 16) {
+    console.log("moving focus")
+    this.x -= (this.x - 16) - pc.x
+  }
+}})
+
+const attacks =[]
+attacks.push(Sprite({
+  width: 8,
+  height: 8,
+  x:0, 
+  y:0,
+  opacity: 0
+}))
+
 
 let mapcontext = undefined;
 
@@ -110,14 +59,14 @@ spriteImage.onload = () => {
   const flippedcontext = flippedcanvas.getContext("2d");
   flippedcontext.translate(32, 0)
   flippedcontext.scale(-1,1)
-  flippedcontext.drawImage(spriteImage, 0, 0, 32, 16, 0, 0, 32, 16);
+  flippedcontext.drawImage(spriteImage, 0, 0, 32, 24, 0, 0, 32, 24);
   
   const totalanimcanvas = document.createElement("canvas");
-  totalanimcanvas.height = 32
+  totalanimcanvas.height = 48
   totalanimcanvas.width = 32
   const totalanimcontext = totalanimcanvas.getContext('2d')
-  totalanimcontext.drawImage(spriteImage, 0, 0, 32, 16, 0, 0, 32, 16)
-  totalanimcontext.drawImage(flippedcanvas, 0, 0, 32, 16, 0, 16, 32, 16)
+  totalanimcontext.drawImage(spriteImage, 0, 0, 32, 24, 0, 0, 32, 24)
+  totalanimcontext.drawImage(flippedcanvas, 0, 0, 32, 24, 0, 24, 32, 24)
 
   let ssheet = SpriteSheet({
     image: totalanimcanvas,
@@ -135,12 +84,12 @@ spriteImage.onload = () => {
         loop: true
       },
       fidle: {
-        frames: [11, 10],
+        frames: [15, 14],
         frameRate: 1,
         loop: true,
       },
       fwalk: {
-        frames: [9, 8],
+        frames: [13, 12],
         frameRate: 5,
         loop: true
       },
@@ -155,39 +104,37 @@ spriteImage.onload = () => {
         loop: true
       },
       fjump: {
-        frames: [15, 14],
+        frames: [19, 18],
         frameRate: 5,
         loop: true
       },
       ffall: {
-        frames: [13, 12],
+        frames: [17, 16],
         frameRate: 5,
         loop: true
+      },
+      attack: {
+        frames: [8, 9, 9, 9],
+        frameRate: 5,
+        loop: false
+      },
+      fattack: {
+        frames: [23, 22, 22, 22],
+        frameRate: 5,
+        loop: false
       },
     },
   });
 
-  /*spriteTest = Sprite({
-    x: 3,
-    y: 5,
-    width: 8,
-    height: 8,
-    animations: ssheet.animations,
-  });
-  spriteTest.context.imageSmoothingEnabled = false;
-  
-  pc.sprite = spriteTest;*/
-
   const jumpHeight = 16
   const timeToApex = 80
   const g = (2 * jumpHeight)/(timeToApex^2)
-  //const initJumpVel = Math.sqrt(2*g*jumpHeight)
 
   pc = Sprite({
     x: 10,
     y: 32,
-    sx: 0.6,
-    sy: 0.6,
+    dx: 0.6,
+    dy: 0.6,
     dt: 1/60,
     width: 8,
     height: 8,
@@ -198,24 +145,27 @@ spriteImage.onload = () => {
     jumping: false,
     flipped: false,
     falling: false,
+    attacking: false,
     jumpButtonPressed: false,
+    attackButtonPressed: false,
     animStarted: false,
+    attackTimer: 0,
     update: function () {
       
       this.isMoving = false;
-      if (keyPressed("left")) {
+      if (keyPressed("left") && !this.attacking) {
         //console.log("pressing left")
         this.isMoving = true;
         this.flipped = true;
-        this.x -= this.sx + g*this.dt;
+        this.x -= this.dx + g*this.dt;
         //this.sx += 0.6
       }
   
-      if (keyPressed("right")) {
+      if (keyPressed("right") && !this.attacking) {
         //console.log("pressing right")
         this.isMoving = true;
         this.flipped = false;
-        this.x += this.sy + g*this.dt;
+        this.x += this.dx + g*this.dt;
         //this.sx += 0.6
       }
 
@@ -230,21 +180,39 @@ spriteImage.onload = () => {
         }
       }
 
+      if (keyPressed("s") && this.inGround && !this.attackButtonPressed) {
+        this.attackButtonPressed = true
+        this.attacking = true
+        this.animations["attack"].reset()
+        this.animations["fattack"].reset()
+        this.attackTimer = this.animations["attack"].frameRate * this.animations["attack"].frames.length + 5
+        /*console.log("this.attackTimer", this.attackTimer)
+        console.log("this.x", this.x)
+        console.log("this.y", this.y)
+        console.log("this.world", this.world)
+        console.log("this.attackTimer", this.attackTimer)*/
+
+      } else {
+        if (keyPressed("s") === false) {
+          this.attackButtonPressed = false
+        }
+      }
+
+      if (this.attacking) {
+        this.attackTimer--
+        if (this.attackTimer <= 0) {
+          this.attacking = false
+        }
+      }
+
       if (this.jumping) {
-        //console.log("pressing right")
         this.isMoving = true;
         this.y -= Math.sqrt(2*g*jumpHeight);
-          console.log("baseY",this.baseY)
-        console.log("dif UP",Math.sqrt(2*g*jumpHeight))
-        console.log("y UP",this.y)
 
         if (this.y <= this.baseY - jumpHeight) {
-          console.log("falling from jump")
           this.falling = true
           this.jumping = false
-        } 
-
-        //this.sx += 0.6
+        }
       } 
       
       quad.clear()
@@ -262,7 +230,7 @@ spriteImage.onload = () => {
           if (this.y + 8 >= land.y && this.y + 7 <= land.y && 
             this.x + 5 >= land.x && this.x + 3 <= land.x + 8) {
             col = true
-            this.y = land.y - 7
+            this.y = land.y - 8
             this.inGround = true
             this.falling = false
           } 
@@ -279,8 +247,9 @@ spriteImage.onload = () => {
       
     },
     render: function () {
-
+      attacks[0].opacity = 0
       if (this.flipped) {
+
         if (this.isMoving) {
           this.animStarted = false
           this.currentAnimation = this.animations["fwalk"]
@@ -299,6 +268,21 @@ spriteImage.onload = () => {
         if (this.falling) {
           this.currentAnimation = this.animations["ffall"]
         }
+
+        if (this.attacking) {
+          this.animStarted = false
+          this.currentAnimation = this.animations["fattack"]
+
+          if (this.attackTimer < 10) {
+            attacks[0].x = this.x 
+            attacks[0].y = this.y
+            attacks[0].opacity = 1
+            attacks[0].setScale(-1, 1)
+          } else {
+            attacks[0].opacity = 0
+          }
+        }
+        
       } else {
         if (this.isMoving) {
           this.animStarted = false
@@ -318,59 +302,32 @@ spriteImage.onload = () => {
         if (this.falling) {
           this.currentAnimation = this.animations["fall"]
         }
-      }
-/*
-        if (this.isMoving) {
-          
-          this.animStarted = false
-          
-          if (this.flipped) {
-            console.log('WALK animation')
-            this.currentAnimation = this.animations["fwalk"]
-          } else {
-            
-          }
-          if (this.jumping) {
-            console.log('JUMP animation')
-            if (this.flipped) {
-              this.currentAnimation = this.animations["fjump"]
-            } else {
-              this.currentAnimation = this.animations["jump"]
-            }
-          }
-          if (this.falling) {
-            console.log('FALL animation')
-            if (this.flipped) {
-              this.currentAnimation = this.animations["ffall"]
-            } else {
-              this.currentAnimation = this.animations["fall"]
-            }
-          }
-          
-        } else {
-          if (this.flipped) {
-            if (!this.animStarted) {
-              this.animations['fidle'].reset()
-              this.animStarted = true
-            }
-            this.currentAnimation = this.animations["fidle"]
-          } else {
-            
-          }
-          
-          //this.sprite.playAnimation("idle");
-        }
-        
 
-        */
+        if (this.attacking) {
+          this.animStarted = false
+          this.currentAnimation = this.animations["attack"]
+
+          if (this.attackTimer < 10) {
+            attacks[0].x = this.x + 8
+            attacks[0].y = this.y
+            attacks[0].setScale(1, 1)
+            attacks[0].opacity = 1
+          } else {
+            attacks[0].opacity = 0
+          }
+        }
+      }
         this.currentAnimation.update()
         this.draw()
       }
   })
 
+  camFocus.x = pc.x
+  camFocus.y = pc.y
+
   const mapcanvas = document.createElement("canvas");
   mapcontext = mapcanvas.getContext("2d");
-  mapcontext.drawImage(spriteImage, 0, 16, 24, 8, 0, 0, 24, 8);
+  mapcontext.drawImage(spriteImage, 0, 24, 24, 8, 0, 0, 24, 8);
 
   const maptilesprites = document.createElement("canvas");
   maptilesprites.width = 8
@@ -417,14 +374,21 @@ spriteImage.onload = () => {
     }
   }
 
+  maptilespritescontext.clearRect(0, 0, 8, 8)
+  maptilesprites.width = 8
+  maptilesprites.height = 8
+  maptilespritescontext.drawImage(spriteImage, 32, 8, 8, 8, 0, 0, 8, 8)
+
+  const attackImg = new Image()
+  attackImg.src = maptilesprites.toDataURL("image/png")
+  attacks[0].image = attackImg
+  //attacks[0].setScale(1, 1)
   gameScene = new Scene({id: 'game',
-  children:[...landSprite, pc]})
+  children:[...landSprite, pc, ...attacks, camFocus]})
   
 
   //console.log("landSprite length", landSprite.length);
 };
-
-
 
 let aStateId = 0
 
@@ -444,7 +408,8 @@ const loop = GameLoop({
   update() {
     if (gameScene!==undefined) {
       gameScene.update();
-      //gameScene.lookAt(pc)
+      //camFocus.update()
+      gameScene.lookAt(camFocus)
     }
     
   },
