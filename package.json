@@ -27,8 +27,6 @@
     "html-loader": "^1.1.0",
     "html-webpack-plugin": "^4.3.0",
     "path": "^0.12.7",
-    "sass": "^1.26.10",
-    "sass-loader": "^9.0.3",
     "style-loader": "^1.2.1",
     "terser-webpack-plugin": "^4.1.0",
     "url-loader": "^4.1.0",
@@ -38,7 +36,6 @@
     "webpack-merge": "^5.1.1"
   },
   "dependencies": {
-    "js13k-ecs": "^0.1.4",
     "kontra": "^7.1.2"
   }
 }
