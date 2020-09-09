@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## Webpack Base for js13kGames
 
 ### Getting started
@@ -25,3 +26,7 @@ None of these files are included in your final bundle.
 - `manifest.json` - The metadata file used when submitting your final game
 - `image_large.png` - The large image that shows on the game detail page
 - `image_thumbnail.png` - The thumbnail preview image that shows on the games gallery page
+=======
+# js13k-lostpages
+A game for the js13k 2020 competition
+>>>>>>> remotes/origin/master
