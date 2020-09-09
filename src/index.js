@@ -39,7 +39,6 @@ const quad = Quadtree({
 })
 
 let gameScene = undefined
-let foundPages = 0
 
 let landSprite = [] 
 let pc = undefined
@@ -106,10 +105,8 @@ attacks.push(Sprite({
         
         for (let i = 0; i < inQuad.length && !col; i++) {
           let land = inQuad[i]
-          if (land.id === 'slime' || land.id === 'wolfman') {
-            console.log('enemy will be whack?')
+          if (land.id === 'enemy') {
             if (collided(this, land)) {
-                  console.log("HIT SLME")
                   col = true
                   land.isHit = true
                 }
@@ -394,7 +391,7 @@ spriteImage.onload = () => {
       //console.log("inQuad", inQuad.length)
       let col = false
       if (inQuad.length > 0) {
-        for (let i = 0; i < inQuad.length && !col; i++) {
+        for (let i = 0; i < inQuad.length; i++) {
           let land = inQuad[i]
           if (land.id === 'land' && this.y + 9 >= land.y && this.y + 7 <= land.y && 
             this.x + 5 >= land.x && this.x + 3 <= land.x + 8) {
@@ -405,7 +402,7 @@ spriteImage.onload = () => {
             this.lastLand = land
           }
           
-          if ((land.id === 'slime' || land.id === 'wolfman' || land.id === 'arrow') && 
+          if ((land.id === 'enemy') && 
           collided(land, this) && this.hurtFrames === 0) {
             console.log("player hurt by", land.id, " at ", land.x, land.y)
             console.log('PLAYER HURT')
@@ -585,9 +582,10 @@ spriteImage.onload = () => {
             })
           )
         }
-        if (pixelData[0] === 52) {        
+        if (pixelData[0] === 52) {
+          // Slime        
           enemiesInScene.push(Sprite({
-            id: 'slime',
+            id: 'enemy',
             width: 8,
             height: 8,
             x: i*8,
@@ -628,13 +626,15 @@ spriteImage.onload = () => {
         }
   
         if (pixelData[0] === 88) {
+          // Wolfman
           maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
+          maptilesprites.width = 8
+          maptilesprites.height = 8
           maptilespritescontext.drawImage(spriteImage, 32, 16, 8, 8, 0, 0, 8, 8)
           const wolfAttackImg = new Image()
           wolfAttackImg.src = maptilesprites.toDataURL("image/png")
-  
           enemiesInScene.push(Sprite({
-            id: 'wolfman',
+            id: 'enemy',
             width: 8,
             height: 8,
             x: i*8,
@@ -666,7 +666,7 @@ spriteImage.onload = () => {
   
               if (!col && this.turnFrames === 0) {
                 this.dir = this.dir * -1
-                this.turnFrames = 30
+                this.turnFrames = 60
               }
   
               if (this.turnFrames > 0) {
@@ -686,15 +686,16 @@ spriteImage.onload = () => {
                   
                   const dir = this.dir
                   const pos = {x:this.x, y:this.y}
-                  //console.log('WOLFMAN SHOOTING at' ,pos)
+                  // Arrow
+                  console.log("new arrow at dir", dir)
                   const newArrow = Sprite({
-                    id: 'arrow',
+                    id: 'enemy',
                     width: 8,
                     height: 8,
                     dx: 0.8 * dir,
-                    x: dir === 1 ? pos.x: pos.x + 8, 
+                    x: dir === 1 ? pos.x: pos.x + 8,
+                    scaleX: dir, 
                     y:pos.y,
-                    scaleX: dir,
                     image: wolfAttackImg,
                     update: function() {
                         const inQuad = quad.get(this)
@@ -727,6 +728,7 @@ spriteImage.onload = () => {
                     }
                 }
               } else {
+                
                 this.x += this.dir * 0.3
               }
             },
@@ -802,6 +804,7 @@ spriteImage.onload = () => {
 } 
 
 let firstLoad = true
+let delay = 0
 const states = []
 states.push(GameLoop({
   update() {
@@ -811,8 +814,15 @@ states.push(GameLoop({
       } else {
         firstLoad = false
       }
-      states[0].stop()
-      states[1].start() 
+      delay = 30 
+    }
+
+    if (delay > 0) {
+      delay--
+      if (delay <= 0) {
+        states[0].stop()
+        states[1].start()
+      }
     }
   },
   render() {
@@ -905,8 +915,15 @@ states.push(GameLoop({
 states.push(GameLoop({
   update() {
     if (keyPressed("a")) {
-      states[2].stop()
-      states[0].start() 
+      delay = 30 
+    }
+
+    if (delay > 0) {
+      delay--
+      if (delay <= 0) {
+        states[2].stop()
+        states[0].start()
+      }
     }
   },
   render() {
