@@ -491,7 +491,7 @@ spriteImage.onload = () => {
 
   const mapcanvas = document.createElement("canvas") 
   mapcontext = mapcanvas.getContext("2d") 
-  mapcontext.drawImage(spriteImage, 0, 32, 24, 8, 0, 0, 24, 8) 
+  mapcontext.drawImage(spriteImage, 0, 32, 40, 8, 0, 0, 40, 8) 
 
   const maptilesprites = document.createElement("canvas") 
   maptilesprites.width = 8
@@ -499,7 +499,7 @@ spriteImage.onload = () => {
   const maptilespritescontext = maptilesprites.getContext("2d") 
   
   let landId = 0
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 40; i++) {
     for (let j = 0; j < 8; j++) {
       const pixelData = mapcontext.getImageData(i, j, 1, 1).data 
       if (pixelData[0] === 245) {
@@ -729,7 +729,7 @@ spriteImage.onload = () => {
                 let land = inQuad[i]
                 if (land.id === 'player') {
                   if (collided(this, land)) {
-                        foundPages--
+                        
                         console.log("PAGE COLLECTED")
                         col = true
                         this.isHit = true
@@ -769,6 +769,8 @@ const states = []
 states.push(GameLoop({
   update() {
     if (keyPressed("a")) {
+      pc.hp = "LLL"
+      pc.life = "LLL"
       states[0].stop()
       states[1].start() 
     }
@@ -804,6 +806,8 @@ states.push(GameLoop({
       for (let i = pages.length - 1; i >= 0; i--) {
         const page = pages[i]
         if (page.isHit) {
+          foundPages--
+          console.log(foundPages, 'pages left')
           gameScene.removeChild(page)
           pages.splice(pages.indexOf(page), 1)
         } else {
@@ -816,6 +820,18 @@ states.push(GameLoop({
         pc.hp = "LLL"  
         pc.life = pc.life.substr(0, pc.life.length - 1)
       
+        if (pc.life.length === 0) {
+          states[1].stop()
+          states[0].start()
+        } else {
+          pc.x = pc.lastLand.x
+          pc.y = pc.lastLand.y - 10
+        }
+      }
+
+      if (pc.hp.length === 0) {
+        pc.hp = "LLL"
+        pc.life = pc.life.substr(0, pc.life.length - 1)
         if (pc.life.length === 0) {
           states[1].stop()
           states[0].start()
