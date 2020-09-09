@@ -82,6 +82,19 @@ function collided(obj1, obj2) {
     return true
 }
 
+let arrowPool = {
+  active: [],
+  inactive: []
+}
+
+for (let i = 0; i < 4; i++) {
+  arrowPool.inactive.push(new Sprite({
+    id: "enemy",
+    width: 8,
+    height: 8
+}))
+}
+
 let enemiesInScene = []
 
 /**
@@ -595,27 +608,31 @@ spriteImage.onload = () => {
             animations: enemyssheet.animations,
             currentAnimation: enemyssheet.animations['slime'],
             update: function () {
-              const inQuad = quad.get(this)
-              //console.log("inQuad", inQuad.length)
-              let col = false
-              
-              if (inQuad.length > 0) {
-                //console.log("slime touch ", inQuad.length)
-                for (let i = 0; i < inQuad.length && !col; i++) {
-                  let land = inQuad[i]
-                  if (land.id === 'land' && 
-                  this.y + 8 >= land.y && this.y + 7 <= land.y && 
-                  this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
-                    col = true
+              if ((Math.abs(this.x - pc.x) < 90)) {
+                const inQuad = quad.get(this)
+                //console.log("inQuad", inQuad.length)
+                
+                let col = false
+                
+                if (inQuad.length > 0) {
+                  
+                  for (let i = 0; i < inQuad.length && !col; i++) {
+                    let land = inQuad[i]
+                    if (land.id === 'land' && 
+                    this.y + 8 >= land.y && this.y + 7 <= land.y && 
+                    this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
+                      col = true
+                    }
                   }
                 }
-              }
-  
-              if (!col) {
-                this.dir = this.dir * -1
+    
+                if (!col) {
+                  this.dir = this.dir * -1
+                }
+                
+                this.x += this.dir * 0.3
               }
               
-              this.x += this.dir * 0.3
             },
             render: function () {
               this.currentAnimation.update()
@@ -639,7 +656,7 @@ spriteImage.onload = () => {
             height: 8,
             x: i*8,
             y: j*8,
-            dir: Math.random() > 0.5 ? -1 : 1,
+            dir: 1,
             isHit: false,
             turnFrames: 0,
             toShootFrames: 35,
@@ -647,7 +664,8 @@ spriteImage.onload = () => {
             animations: enemyssheet2.animations,
             currentAnimation: enemyssheet2.animations['wolfman'],
             update: function () {
-              const inQuad = quad.get(this)
+              if (Math.abs(this.x - pc.x) < 90) {
+                const inQuad = quad.get(this)
               //console.log("inQuad", inQuad.length)
               let col = false
               
@@ -680,46 +698,57 @@ spriteImage.onload = () => {
                 }
               }
   
-              if (this.shootingFrames > 0 && (Math.abs(this.x - pc.x) < 90)) {
+              if (this.shootingFrames > 0) {
                 this.shootingFrames--
                 if (this.shootingFrames === 15) {
                   
                   const dir = this.dir
                   const pos = {x:this.x, y:this.y}
                   // Arrow
+                  let newArrow = undefined
                   console.log("new arrow at dir", dir)
-                  const newArrow = Sprite({
-                    id: 'enemy',
-                    width: 8,
-                    height: 8,
-                    dx: 0.8 * dir,
-                    x: dir === 1 ? pos.x: pos.x + 8,
-                    scaleX: dir, 
-                    y:pos.y,
-                    image: wolfAttackImg,
-                    update: function() {
-                        const inQuad = quad.get(this)
-                        let col = false
-                        if (inQuad.length > 0) {
-                          
-                          for (let i = 0; i < inQuad.length && !col; i++) {
-                            let land = inQuad[i]
-                            if (land.id === 'player') {
-                              if (collided(this, land)) {
-                                    col = true
-                              }
-                            }    
-                          }      
-                        }
-  
-                        this.advance()
-  
-                        if (Math.abs(this.x - pc.x) > 90) {
-                          enemiesInScene.splice(enemiesInScene.indexOf(newArrow), 1)
-                          gameScene.removeChild(newArrow)
-                        }
-                    }
-                  })
+                  if (arrowPool.inactive.length > 0) {
+                    newArrow = arrowPool.inactive.pop()
+                  } else {
+                    newArrow = Sprite({})
+                  }
+                  console.log('active arrows', arrowPool.active.length)
+                  console.log('inactive arrows', arrowPool.inactive.length)
+                  arrowPool.active.push(newArrow)
+                  
+                    
+                    newArrow.dx= 0.8 * dir
+                    newArrow.x= dir === 1 ? pos.x: pos.x + 8
+                    newArrow.scaleX= dir 
+                    newArrow.y=pos.y
+                    newArrow.image= wolfAttackImg
+                    newArrow.update= function() {
+                      const inQuad = quad.get(newArrow)
+                      let col = false
+                      if (inQuad.length > 0) {
+                        
+                        for (let i = 0; i < inQuad.length && !col; i++) {
+                          let land = inQuad[i]
+                          if (land.id === 'player') {
+                            if (collided(newArrow, land)) {
+                                  col = true
+                            }
+                          }    
+                        }      
+                      }
+
+                      newArrow.advance()
+
+                      if (Math.abs(newArrow.x - pc.x) > 90) {
+                        newArrow.update = undefined
+                        enemiesInScene.splice(enemiesInScene.indexOf(newArrow), 1)
+                        arrowPool.active.splice(arrowPool.active.indexOf(newArrow), 1)
+                        arrowPool.inactive.push(newArrow)
+                        gameScene.removeChild(newArrow)
+                        console.log("gamescene children", gameScene.children.length)
+                      }
+                  }
+                  
                   enemiesInScene.push(newArrow)
                   gameScene.addChild(newArrow)     
                 } else {
@@ -731,6 +760,8 @@ spriteImage.onload = () => {
                 
                 this.x += this.dir * 0.3
               }
+              }
+              
             },
             render: function () {
               if (this.dir === 1) {
@@ -796,8 +827,11 @@ spriteImage.onload = () => {
         }
       }
     }
+    
+    //camFocus.addChild(bg)
     gameScene = new Scene({id: 'game',
-    children:[...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]})
+    
+    children:[ ...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]})
   }
   
   resetGameState()
@@ -840,6 +874,7 @@ states.push(GameLoop({
       for (let i = 0; i < landSprite.length; i++) {
         quad.add(landSprite[i])
       }
+      //console.log("enemiesinscene length", enemiesInScene.length)
       for (let i = enemiesInScene.length - 1; i >= 0 ; i--) {
         const enemy = enemiesInScene[i]
         if (enemy.isHit) {
@@ -864,7 +899,7 @@ states.push(GameLoop({
         }
         
       }
-
+      //console.log("quad length", quad.)
       if (pc.y > 128) {
         pc.hp = "LLL"  
         pc.life = pc.life.substr(0, pc.life.length - 1)
@@ -902,6 +937,8 @@ states.push(GameLoop({
   },
   render() {
     if (gameScene!==undefined) {
+      
+      
       showText("LIFE", 0, 10, 4, 'rgb(245, 237, 186)')
       showText(pc.life, 12, 10, 4, 'rgb(100, 125, 52)')
       showText("HP", 0, 16, 4, 'rgb(245, 237, 186)')
