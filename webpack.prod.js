@@ -3,6 +3,7 @@ const { merge } = require('webpack-merge')
 const TerserPlugin = require('terser-webpack-plugin')
 const common = require('./webpack.common.js')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const ClosurePlugin = require('closure-webpack-plugin')
 
 module.exports = merge(common, {
   mode: 'production',
@@ -12,18 +13,20 @@ module.exports = merge(common, {
     minimizer: [
       new TerserPlugin({
         terserOptions: {
-          ecma: undefined,
+          ecma: 6,
           warnings: false,
           parse: {},
           compress: {
             drop_console: true,
+            unsafe: true,
+            passes: 2,
           },
           mangle: {
             toplevel: true,
             // properties: false,
             properties: {
               regex: /(__[a-zA-Z]+)/,
-            },
+            }
             // properties: {
             //   regex: /__/g,
             // },

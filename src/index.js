@@ -7,11 +7,17 @@ import {
   keyPressed,
   Scene,
   Quadtree,
-  GameObject
+  GameObject,
+  lerp
 } from "kontra"
+import {initFont} from "tinyfont"
+import {font} from "tinyfont/font-tiny"
 import spritesheet from "./assets/images/sprites/spritesheet.png"
 
 let { canvas, context } = init()
+
+const showText = initFont(font, context)
+
 context.imageSmoothingEnabled = false 
 initKeys() 
 const quad = Quadtree({
@@ -20,27 +26,34 @@ const quad = Quadtree({
 })
 
 let gameScene = undefined
-
+let foundPages = 0
 
 let landSprite = [] 
 let pc = undefined
 let camFocus = GameObject({update: function () {
-  //console.log("camFocus x", this.x)
   if (pc.x >= this.x + 16) {
-    console.log("moving focus")
     this.x += pc.x - (this.x + 16)
   }
 
   if (pc.x <= this.x - 16) {
-    console.log("moving focus")
     this.x -= (this.x - 16) - pc.x
   }
 }})
 
-
-
 function collbox (obj) {
   return {x1: obj.x, x2:obj.x + obj.width, y1: obj.y, y2: obj.y + obj.height}
+}
+
+function collided(obj1, obj2) {
+  const box1 = collbox(obj1)
+  const box2 = collbox(obj2)
+  if (box1.x1 >= box2.x2 || 
+    box1.y1 >= box2.y2 ||
+    box2.x1 >= box1.x2 ||
+    box2.y1 >= box1.y2) {
+      return false
+    } 
+    return true
 }
 
 const enemiesInScene = []
@@ -62,16 +75,9 @@ attacks.push(Sprite({
         
         for (let i = 0; i < inQuad.length && !col; i++) {
           let land = inQuad[i]
-          if (land.id === 'slime') {
-            const box1 = collbox(this)
-            const box2 = collbox(land)
-
-            if (box1.x1 >= box2.x2 || 
-                box1.y1 >= box2.y2 ||
-                box2.x1 >= box1.x2 ||
-                box2.y1 >= box1.y2) {
-                  continue
-                } else {
+          if (land.id === 'slime' || land.id === 'wolfman') {
+            console.log('enemy will be whack?')
+            if (collided(this, land)) {
                   console.log("HIT SLME")
                   col = true
                   land.isHit = true
@@ -100,6 +106,7 @@ const deadFX = Sprite({
       if (this.visFrames <= 0) {
         this.visible = false
         this.opacity = 0
+        
       }
     }
 
@@ -117,6 +124,8 @@ const deadFX = Sprite({
     
   }
 })
+
+const pages = []
 
 let mapcontext = undefined 
 
@@ -194,6 +203,16 @@ spriteImage.onload = () => {
         frameRate: 5,
         loop: false
       },
+      hurt: {
+        frames: [10, 11],
+        frameRate: 3,
+        loop: false
+      },
+      fhurt: {
+        frames: [21, 20],
+        frameRate: 3,
+        loop: false
+      },
     },
   }) 
 
@@ -216,11 +235,43 @@ spriteImage.onload = () => {
     }
   })
 
+  flippedcontext.clearRect(0, 0, 16, 8)
+  flippedcanvas.height = 8
+  flippedcanvas.width = 16
+  flippedcontext.translate(16, 0)
+  flippedcontext.scale(-1,1)
+  flippedcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
+  totalanimcontext.clearRect(0, 0, 32, 16)
+  totalanimcanvas.height = 16
+  totalanimcanvas.width = 16
+  totalanimcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
+  totalanimcontext.drawImage(flippedcanvas, 0, 0, 16, 8, 0, 8, 16, 8)
+  let enemyssheetImage2 = new Image()
+  enemyssheetImage2.src = totalanimcanvas.toDataURL("image/png")
+  let enemyssheet2 = SpriteSheet({
+    image: enemyssheetImage2,
+    frameWidth: 8,
+    frameHeight: 8,
+    animations: {
+      wolfman: {
+        frames: [0, 1],
+        frameRate: 5,
+        loop: true,
+      },
+      fwolfman: {
+        frames: [3, 2],
+        frameRate: 5,
+        loop: true,
+      },
+    }
+  })
+
   const jumpHeight = 16
   const timeToApex = 80
   const g = (2 * jumpHeight)/(timeToApex^2)
 
   pc = Sprite({
+    id: 'player',
     x: 10,
     y: 32,
     dx: 0.6,
@@ -228,10 +279,14 @@ spriteImage.onload = () => {
     dt: 1/60,
     width: 8,
     height: 8,
+    hp: "LLL",
+    life: "LLL",
     animations: ssheet.animations,
     currentAnimation: ssheet.animations['idle'],
     inGround: false,
     isMoving: false,
+    hurtFrames: 0,
+    lastLand: undefined,
     jumping: false,
     flipped: false,
     falling: false,
@@ -244,13 +299,7 @@ spriteImage.onload = () => {
       
       this.isMoving = false 
 
-      if (keyPressed("g")) {
-        deadFX.x = this.x
-        deadFX.y = this.y
-        deadFX.opacity = 1
-      }
-
-      if (keyPressed("left") && !this.attacking) {
+      if (keyPressed("left") && !this.attacking && this.hurtFrames===0)  {
         //console.log("pressing left")
         this.isMoving = true 
         this.flipped = true 
@@ -258,7 +307,7 @@ spriteImage.onload = () => {
         //this.sx += 0.6
       }
   
-      if (keyPressed("right") && !this.attacking) {
+      if (keyPressed("right") && !this.attacking && this.hurtFrames===0) {
         //console.log("pressing right")
         this.isMoving = true 
         this.flipped = false 
@@ -320,16 +369,30 @@ spriteImage.onload = () => {
       if (inQuad.length > 0) {
         for (let i = 0; i < inQuad.length && !col; i++) {
           let land = inQuad[i]
-          if (this.y + 9 >= land.y && this.y + 7 <= land.y && 
+          if (land.id === 'land' && this.y + 9 >= land.y && this.y + 7 <= land.y && 
             this.x + 5 >= land.x && this.x + 3 <= land.x + 8) {
             col = true
             this.y = land.y - 8
             this.inGround = true
             this.falling = false
-          } 
+            this.lastLand = land
+          }
+          
+          if ((land.id === 'slime' || land.id === 'wolfman' || land.id === 'arrow') && 
+          collided(land, this) && this.hurtFrames === 0) {
+            console.log("player hurt by", land.id, " at ", land.x, land.y)
+            console.log('PLAYER HURT')
+            
+            this.hp = this.hp.substr(0, this.hp.length - 1)
+            
+            this.hurtFrames = 30
+          }
         }
       }
   
+      if(this.hurtFrames > 0) {
+        this.hurtFrames--
+      }
       
       if (!col && !this.jumping) {
         //console.log(col)
@@ -375,6 +438,10 @@ spriteImage.onload = () => {
             attacks[0].opacity = 0
           }
         }
+
+        if (this.hurtFrames > 0) {
+          this.currentAnimation = this.animations["fhurt"]
+        }
         
       } else {
         if (this.isMoving) {
@@ -409,6 +476,10 @@ spriteImage.onload = () => {
             attacks[0].opacity = 0
           }
         }
+
+        if (this.hurtFrames > 0) {
+          this.currentAnimation = this.animations["hurt"]
+        }
       }
         this.currentAnimation.update()
         this.draw()
@@ -427,7 +498,6 @@ spriteImage.onload = () => {
   maptilesprites.height = 8
   const maptilespritescontext = maptilesprites.getContext("2d") 
   
-
   let landId = 0
   for (let i = 0; i < 24; i++) {
     for (let j = 0; j < 8; j++) {
@@ -463,26 +533,15 @@ spriteImage.onload = () => {
           })
         )
       }
-      if (pixelData[0] === 52) {
-        
-        maptilespritescontext.clearRect(0, 0, 8, 8)
-        maptilesprites.width = 8
-        maptilesprites.height = 8
-        maptilespritescontext.drawImage(spriteImage, 0, 24, 8, 8, 0, 0, 8, 8)       
-        let temp = new Image()
-        temp.src = maptilesprites.toDataURL("image/png")
+      if (pixelData[0] === 52) {        
         enemiesInScene.push(Sprite({
           id: 'slime',
           width: 8,
           height: 8,
           x: i*8,
           y: j*8,
-          dir: -1,
-          hp: 1,
+          dir: Math.random() > 0.5 ? -1 : 1,
           isHit: false,
-          waitFrames: 0,
-          opaFrames: 0,
-          deadFrames: 15,
           animations: enemyssheet.animations,
           currentAnimation: enemyssheet.animations['slime'],
           update: function () {
@@ -499,24 +558,11 @@ spriteImage.onload = () => {
                 this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
                   col = true
                 }
-                
-                if (land.id === 'attack' && 
-                this.y >= land.y && this.y <= land.y && 
-                this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
-                  console.log("HIT")
-                  col = true
-                  enemiesInScene.pop()
-                }
               }
             }
 
             if (!col) {
-              
               this.dir = this.dir * -1
-            }
-
-            if (this.waitFrames >= 0) {
-              this.waitFrames--
             }
             
             this.x += this.dir * 0.3
@@ -527,6 +573,182 @@ spriteImage.onload = () => {
           }
         }))
         console.log("setting slime", i*8, j*8)
+      }
+
+      if (pixelData[0] === 88) {
+        maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
+        maptilespritescontext.drawImage(spriteImage, 32, 16, 8, 8, 0, 0, 8, 8)
+        const wolfAttackImg = new Image()
+        wolfAttackImg.src = maptilesprites.toDataURL("image/png")
+
+        enemiesInScene.push(Sprite({
+          id: 'wolfman',
+          width: 8,
+          height: 8,
+          x: i*8,
+          y: j*8,
+          dir: Math.random() > 0.5 ? -1 : 1,
+          isHit: false,
+          turnFrames: 0,
+          toShootFrames: 35,
+          shootingFrames: 15,
+          animations: enemyssheet2.animations,
+          currentAnimation: enemyssheet2.animations['wolfman'],
+          update: function () {
+            const inQuad = quad.get(this)
+            //console.log("inQuad", inQuad.length)
+            let col = false
+            
+            if (inQuad.length > 0) {
+              //console.log("slime touch ", inQuad.length)
+              for (let i = 0; i < inQuad.length && !col; i++) {
+                let land = inQuad[i]
+                const offset = this.dir === 1 ? 7 : 2
+                if (land.id === 'land' &&  
+                this.y + 9 >= land.y &&
+                this.x + offset >= land.x && this.x + offset <= land.x + 8) {
+                  col = true
+                }
+              }
+            }
+
+            if (!col && this.turnFrames === 0) {
+              this.dir = this.dir * -1
+              this.turnFrames = 30
+            }
+
+            if (this.turnFrames > 0) {
+              this.turnFrames--
+            }
+
+            if (this.toShootFrames > 0 ) {
+              this.toShootFrames--
+              if (this.toShootFrames <= 0) {
+                this.shootingFrames = 45
+              }
+            }
+
+            if (this.shootingFrames > 0 && (Math.abs(this.x - pc.x) < 90)) {
+              this.shootingFrames--
+              if (this.shootingFrames === 15) {
+                
+                const dir = this.dir
+                const pos = {x:this.x, y:this.y}
+                //console.log('WOLFMAN SHOOTING at' ,pos)
+                const newArrow = Sprite({
+                  id: 'arrow',
+                  width: 8,
+                  height: 8,
+                  dx: 0.8 * dir,
+                  x: dir === 1 ? pos.x: pos.x + 8, 
+                  y:pos.y,
+                  scaleX: dir,
+                  image: wolfAttackImg,
+                  update: function() {
+                      const inQuad = quad.get(this)
+                      let col = false
+                      if (inQuad.length > 0) {
+                        
+                        for (let i = 0; i < inQuad.length && !col; i++) {
+                          let land = inQuad[i]
+                          if (land.id === 'player') {
+                            if (collided(this, land)) {
+                                  console.log("HIT PLAYER REALL GOODO")
+                                  col = true
+                                  
+                                }
+                          }    
+                        }      
+                      }
+
+                      this.advance()
+
+                      if (Math.abs(this.x - pc.x) > 90) {
+                        enemiesInScene.splice(enemiesInScene.indexOf(newArrow), 1)
+                        gameScene.removeChild(newArrow)
+                      }
+                  }
+                })
+                enemiesInScene.push(newArrow)
+                gameScene.addChild(newArrow)     
+              } else {
+                  if (this.shootingFrames <= 0) {
+                    this.toShootFrames = 65
+                  }
+              }
+            } else {
+              this.x += this.dir * 0.3
+            }
+            
+            
+          },
+          render: function () {
+            if (this.dir === 1) {
+              this.currentAnimation = this.animations["wolfman"]
+            } else {
+              this.currentAnimation = this.animations["fwolfman"]
+            }
+            
+            this.currentAnimation.update()
+            this.draw()
+          }
+        }))
+        console.log("setting wolfman", i*8, j*8)
+      }
+
+      if (pixelData[0] === 228) {
+        foundPages++
+        maptilespritescontext.clearRect(0, 0, 8, 8)
+        maptilesprites.width = 8
+        maptilesprites.height = 8
+        maptilespritescontext.drawImage(spriteImage, 40, 8, 8, 8, 0, 0, 8, 8)       
+        let temp = new Image()
+        temp.src = maptilesprites.toDataURL("image/png")
+        pages.push(Sprite({
+          id: 'page',
+          width: 8,
+          height: 8,
+          x: i*8,
+          y: j*8,
+          //anchor: {x:0, y:0},
+          yMax: j*8 - 3,
+          yMin: j*8,
+          p: 0,
+          dir: -1,
+          image: temp,
+          isHit: false,
+          timer: 0,
+          update: function () {
+            const inQuad = quad.get(this)
+            //console.log("inQuad", inQuad.length)
+            let col = false
+            
+            if (inQuad.length > 0) {
+              //console.log("slime touch ", inQuad.length)
+              for (let i = 0; i < inQuad.length && !col; i++) {
+                let land = inQuad[i]
+                if (land.id === 'player') {
+                  if (collided(this, land)) {
+                        foundPages--
+                        console.log("PAGE COLLECTED")
+                        col = true
+                        this.isHit = true
+                      }
+                }
+              }
+            }
+            
+            this.y = lerp(this.yMin, this.yMax, this.p)
+            this.p += 0.03 * this.dir
+            if (this.p >= 1) {
+              this.dir = -1
+            }
+            if (this.p <= 0) {
+              this.dir = 1
+            }
+          }
+        }))
+        console.log('page at', i*8, j*8)
       }
     }
   }
@@ -539,29 +761,26 @@ spriteImage.onload = () => {
   const attackImg = new Image()
   attackImg.src = maptilesprites.toDataURL("image/png")
   attacks[0].image = attackImg
-  //attacks[0].setScale(1, 1)
   gameScene = new Scene({id: 'game',
-  children:[...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, camFocus]})
-  
-
-  //console.log("landSprite length", landSprite.length) 
+  children:[...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]}) 
 } 
 
-let aStateId = 0
+const states = []
+states.push(GameLoop({
+  update() {
+    if (keyPressed("a")) {
+      states[0].stop()
+      states[1].start() 
+    }
+  },
+  render() {
+    showText("LOST PAGES", 44, 20, 4, 'rgb(245, 237, 186)')
+    showText("RAGNATIC", 50, 90, 4, 'rgb(245, 237, 186)')
+    showText("2020", 55, 100, 4, 'rgb(245, 237, 186)')
+  }
+})) 
 
-// const loop = GameLoop({
-//   update() {
-//     pc.update() 
-//   },
-//   render() {
-//     pc.render() 
-
-//     for (let i = 0 ;i < landSprite.length; i++) {
-//       landSprite[i].render()
-//     }
-//   },
-// })
-const loop = GameLoop({
+states.push(GameLoop({
   update() {
     if (gameScene!==undefined) {
       quad.clear()
@@ -569,40 +788,76 @@ const loop = GameLoop({
       for (let i = 0; i < landSprite.length; i++) {
         quad.add(landSprite[i])
       }
-      for (let i = 0; i < enemiesInScene.length; i++) {
+      for (let i = enemiesInScene.length - 1; i >= 0 ; i--) {
         const enemy = enemiesInScene[i]
         if (enemy.isHit) {
           deadFX.x = enemy.x
           deadFX.y = enemy.y
           deadFX.opacity = 1
-          console.log("removing child")
           gameScene.removeChild(enemy)
-          enemiesInScene.pop()
+          enemiesInScene.splice(enemiesInScene.indexOf(enemy), 1)
         } else {
           quad.add(enemiesInScene[i])
+        }        
+      }
+
+      for (let i = pages.length - 1; i >= 0; i--) {
+        const page = pages[i]
+        if (page.isHit) {
+          gameScene.removeChild(page)
+          pages.splice(pages.indexOf(page), 1)
+        } else {
+          quad.add(pages[i])
         }
         
       }
 
+      if (pc.y > 128) {
+        pc.hp = "LLL"  
+        pc.life = pc.life.substr(0, pc.life.length - 1)
+      
+        if (pc.life.length === 0) {
+          states[1].stop()
+          states[0].start()
+        } else {
+          pc.x = pc.lastLand.x
+          pc.y = pc.lastLand.y - 10
+        }
+      }
+
+      if (foundPages <= 0) {
+        states[1].stop()
+        states[2].start()
+      }
+
       gameScene.update()
-      //camFocus.update()
       gameScene.lookAt(camFocus)
     }
     
   },
   render() {
     if (gameScene!==undefined) {
+      showText("LIFE", 0, 10, 4, 'rgb(245, 237, 186)')
+      showText(pc.life, 12, 10, 4, 'rgb(100, 125, 52)')
+      showText("HP", 0, 16, 4, 'rgb(245, 237, 186)')
+      showText(pc.hp, 8, 16, 4, 'rgb(210, 100, 113)')
+      
       gameScene.render()
     }
-    
-
-    /*for (let i = 0; i < landSprite.length; i++) {
-      landSprite[i].render();
-    }*/
   },
-})
+}))
 
-const states = [loop]
+states.push(GameLoop({
+  update() {
+    if (keyPressed("a")) {
+      states[0].start() 
+    }
+  },
+  render() {
+    showText("CONGRATULATIONS!!", 34, 60, 4, 'rgb(245, 237, 186)')
+    showText("YOU FOUND ALL PAGES!!", 28, 54, 4, 'rgb(245, 237, 186)')
+  }
+}))
 
-states[aStateId].start()
+states[0].start()
 

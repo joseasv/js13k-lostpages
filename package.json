@@ -18,12 +18,14 @@
     "babel-loader": "^8.1.0",
     "babel-preset-env": "^1.7.0",
     "clean-webpack-plugin": "^3.0.0",
+    "closure-webpack-plugin": "^2.3.0",
     "copy-webpack-plugin": "^6.0.3",
     "css-loader": "^4.2.1",
     "eslint": "^7.6.0",
     "eslint-import-resolver-webpack": "^0.12.2",
     "eslint-plugin-import": "^2.22.0",
     "file-loader": "^6.0.0",
+    "google-closure-compiler": "^20200830.0.0",
     "html-loader": "^1.1.0",
     "html-webpack-plugin": "^4.3.0",
     "path": "^0.12.7",
@@ -36,6 +38,7 @@
     "webpack-merge": "^5.1.1"
   },
   "dependencies": {
-    "kontra": "^7.1.2"
+    "kontra": "^7.1.2",
+    "tinyfont": "^1.3.1"
   }
 }
