@@ -1,3 +1,15 @@
+/**
+ * Lost Pages - A game for the js13k 2020 competition
+ * by Ragnatic https://twitter.com/Ragnatic
+ *
+ * This is a platform game made quickly using the KontraJS
+ * engine. Looking back I think I should have used custom made 
+ * classes to have a better looking code and less headaches. 
+ * I always creating objects using KontraJS classes directly 
+ * with no inheritance. The average pixelart is made by me with
+ * some suggestions of my wife https://twitter.com/caroldesignart.
+ */
+
 import {
   init,
   Sprite,
@@ -17,9 +29,10 @@ import spritesheet from "./assets/images/sprites/spritesheet.png"
 let { canvas, context } = init()
 
 const showText = initFont(font, context)
-
 context.imageSmoothingEnabled = false 
 initKeys() 
+
+// I make heavy use (like too much) of the KontraJS quadtree in collisions
 const quad = Quadtree({
   bounds: {x:0, y:0, width:128, height:128},
   maxObjects: 10
@@ -30,6 +43,11 @@ let foundPages = 0
 
 let landSprite = [] 
 let pc = undefined
+
+/**
+ * The camera should focus on this object and not the player.
+ * This makes camera movements less vomit-inducing
+ */
 let camFocus = GameObject({update: function () {
   if (pc.x >= this.x + 16) {
     this.x += pc.x - (this.x + 16)
@@ -40,10 +58,19 @@ let camFocus = GameObject({update: function () {
   }
 }})
 
+/**
+ * Get collision box of objects
+ * @param {GameObject} obj 
+ */
 function collbox (obj) {
   return {x1: obj.x, x2:obj.x + obj.width, y1: obj.y, y2: obj.y + obj.height}
 }
 
+/**
+ * Classic AABB collision check
+ * @param {GameObject} obj1 
+ * @param {GameObject} obj2 
+ */
 function collided(obj1, obj2) {
   const box1 = collbox(obj1)
   const box2 = collbox(obj2)
@@ -56,8 +83,12 @@ function collided(obj1, obj2) {
     return true
 }
 
-const enemiesInScene = []
+let enemiesInScene = []
 
+/**
+ * I was going to create like 2 or 3 attacks for the player
+ * but I ended using just one
+ */
 const attacks =[]
 attacks.push(Sprite({
   id: 'attack',
@@ -89,6 +120,10 @@ attacks.push(Sprite({
   }
 }))
 
+/**
+ * This object will display an animation where
+ * an enemy is defeated
+ */
 const deadFX = Sprite({
   height: 8,
   width: 8,
@@ -125,13 +160,15 @@ const deadFX = Sprite({
   }
 })
 
-const pages = []
+// An array of the items to collect
+let pages = []
 
-let mapcontext = undefined 
-
+let resetGameState = undefined
+/**
+ * 
+ */ 
 const spriteImage = new Image() 
 spriteImage.src = spritesheet 
-
 spriteImage.onload = () => {
 
   const flippedcanvas = document.createElement("canvas") 
@@ -300,19 +337,15 @@ spriteImage.onload = () => {
       this.isMoving = false 
 
       if (keyPressed("left") && !this.attacking && this.hurtFrames===0)  {
-        //console.log("pressing left")
         this.isMoving = true 
         this.flipped = true 
         this.x -= this.dx + g*this.dt 
-        //this.sx += 0.6
       }
   
       if (keyPressed("right") && !this.attacking && this.hurtFrames===0) {
-        //console.log("pressing right")
         this.isMoving = true 
         this.flipped = false 
         this.x += this.dx + g*this.dt 
-        //this.sx += 0.6
       }
 
       if (keyPressed("a") && this.inGround && !this.jumpButtonPressed) {
@@ -332,12 +365,6 @@ spriteImage.onload = () => {
         this.animations["attack"].reset()
         this.animations["fattack"].reset()
         this.attackTimer = this.animations["attack"].frameRate * this.animations["attack"].frames.length + 5
-        /*console.log("this.attackTimer", this.attackTimer)
-        console.log("this.x", this.x)
-        console.log("this.y", this.y)
-        console.log("this.world", this.world)
-        console.log("this.attackTimer", this.attackTimer)*/
-
       } else {
         if (keyPressed("s") === false) {
           this.attackButtonPressed = false
@@ -486,273 +513,9 @@ spriteImage.onload = () => {
       }
   })
 
-  camFocus.x = pc.x
-  camFocus.y = pc.y
-
-  const mapcanvas = document.createElement("canvas") 
-  mapcontext = mapcanvas.getContext("2d") 
-  mapcontext.drawImage(spriteImage, 0, 32, 40, 8, 0, 0, 40, 8) 
-
   const maptilesprites = document.createElement("canvas") 
-  maptilesprites.width = 8
-  maptilesprites.height = 8
-  const maptilespritescontext = maptilesprites.getContext("2d") 
+  const maptilespritescontext = maptilesprites.getContext("2d")
   
-  let landId = 0
-  for (let i = 0; i < 40; i++) {
-    for (let j = 0; j < 8; j++) {
-      const pixelData = mapcontext.getImageData(i, j, 1, 1).data 
-      if (pixelData[0] === 245) {
-        //console.log("drawing at ", i, " and ", j) 
-        
-        maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
-        const chance = Math.random()
-        if (chance > 0.5) {
-          //console.log('sprite 1', chance)
-          maptilespritescontext.drawImage(spriteImage, 32, 0, 8, 8, 0, 0, 8, 8) 
-        } else {
-          //console.log('sprite 2', chance)
-          maptilespritescontext.drawImage(spriteImage, 40, 0, 8, 8, 0, 0, 8, 8) 
-        }
-        if (chance > 0.5) {
-          //console.log('sprite 1', chance)
-          maptilespritescontext.translate(8, 0)
-          maptilespritescontext.scale(-1, 1) 
-        } 
-        let temp = new Image()
-        temp.src = maptilesprites.toDataURL("image/png")
-        landSprite.push(
-          Sprite({
-            id: 'land',
-            width: 8,
-            height: 8,
-            x: i * 8,
-            y: j * 8,
-            floor: true,
-            image: temp,
-          })
-        )
-      }
-      if (pixelData[0] === 52) {        
-        enemiesInScene.push(Sprite({
-          id: 'slime',
-          width: 8,
-          height: 8,
-          x: i*8,
-          y: j*8,
-          dir: Math.random() > 0.5 ? -1 : 1,
-          isHit: false,
-          animations: enemyssheet.animations,
-          currentAnimation: enemyssheet.animations['slime'],
-          update: function () {
-            const inQuad = quad.get(this)
-            //console.log("inQuad", inQuad.length)
-            let col = false
-            
-            if (inQuad.length > 0) {
-              //console.log("slime touch ", inQuad.length)
-              for (let i = 0; i < inQuad.length && !col; i++) {
-                let land = inQuad[i]
-                if (land.id === 'land' && 
-                this.y + 8 >= land.y && this.y + 7 <= land.y && 
-                this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
-                  col = true
-                }
-              }
-            }
-
-            if (!col) {
-              this.dir = this.dir * -1
-            }
-            
-            this.x += this.dir * 0.3
-          },
-          render: function () {
-            this.currentAnimation.update()
-            this.draw()
-          }
-        }))
-        console.log("setting slime", i*8, j*8)
-      }
-
-      if (pixelData[0] === 88) {
-        maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
-        maptilespritescontext.drawImage(spriteImage, 32, 16, 8, 8, 0, 0, 8, 8)
-        const wolfAttackImg = new Image()
-        wolfAttackImg.src = maptilesprites.toDataURL("image/png")
-
-        enemiesInScene.push(Sprite({
-          id: 'wolfman',
-          width: 8,
-          height: 8,
-          x: i*8,
-          y: j*8,
-          dir: Math.random() > 0.5 ? -1 : 1,
-          isHit: false,
-          turnFrames: 0,
-          toShootFrames: 35,
-          shootingFrames: 15,
-          animations: enemyssheet2.animations,
-          currentAnimation: enemyssheet2.animations['wolfman'],
-          update: function () {
-            const inQuad = quad.get(this)
-            //console.log("inQuad", inQuad.length)
-            let col = false
-            
-            if (inQuad.length > 0) {
-              //console.log("slime touch ", inQuad.length)
-              for (let i = 0; i < inQuad.length && !col; i++) {
-                let land = inQuad[i]
-                const offset = this.dir === 1 ? 7 : 2
-                if (land.id === 'land' &&  
-                this.y + 9 >= land.y &&
-                this.x + offset >= land.x && this.x + offset <= land.x + 8) {
-                  col = true
-                }
-              }
-            }
-
-            if (!col && this.turnFrames === 0) {
-              this.dir = this.dir * -1
-              this.turnFrames = 30
-            }
-
-            if (this.turnFrames > 0) {
-              this.turnFrames--
-            }
-
-            if (this.toShootFrames > 0 ) {
-              this.toShootFrames--
-              if (this.toShootFrames <= 0) {
-                this.shootingFrames = 45
-              }
-            }
-
-            if (this.shootingFrames > 0 && (Math.abs(this.x - pc.x) < 90)) {
-              this.shootingFrames--
-              if (this.shootingFrames === 15) {
-                
-                const dir = this.dir
-                const pos = {x:this.x, y:this.y}
-                //console.log('WOLFMAN SHOOTING at' ,pos)
-                const newArrow = Sprite({
-                  id: 'arrow',
-                  width: 8,
-                  height: 8,
-                  dx: 0.8 * dir,
-                  x: dir === 1 ? pos.x: pos.x + 8, 
-                  y:pos.y,
-                  scaleX: dir,
-                  image: wolfAttackImg,
-                  update: function() {
-                      const inQuad = quad.get(this)
-                      let col = false
-                      if (inQuad.length > 0) {
-                        
-                        for (let i = 0; i < inQuad.length && !col; i++) {
-                          let land = inQuad[i]
-                          if (land.id === 'player') {
-                            if (collided(this, land)) {
-                                  console.log("HIT PLAYER REALL GOODO")
-                                  col = true
-                                  
-                                }
-                          }    
-                        }      
-                      }
-
-                      this.advance()
-
-                      if (Math.abs(this.x - pc.x) > 90) {
-                        enemiesInScene.splice(enemiesInScene.indexOf(newArrow), 1)
-                        gameScene.removeChild(newArrow)
-                      }
-                  }
-                })
-                enemiesInScene.push(newArrow)
-                gameScene.addChild(newArrow)     
-              } else {
-                  if (this.shootingFrames <= 0) {
-                    this.toShootFrames = 65
-                  }
-              }
-            } else {
-              this.x += this.dir * 0.3
-            }
-            
-            
-          },
-          render: function () {
-            if (this.dir === 1) {
-              this.currentAnimation = this.animations["wolfman"]
-            } else {
-              this.currentAnimation = this.animations["fwolfman"]
-            }
-            
-            this.currentAnimation.update()
-            this.draw()
-          }
-        }))
-        console.log("setting wolfman", i*8, j*8)
-      }
-
-      if (pixelData[0] === 228) {
-        foundPages++
-        maptilespritescontext.clearRect(0, 0, 8, 8)
-        maptilesprites.width = 8
-        maptilesprites.height = 8
-        maptilespritescontext.drawImage(spriteImage, 40, 8, 8, 8, 0, 0, 8, 8)       
-        let temp = new Image()
-        temp.src = maptilesprites.toDataURL("image/png")
-        pages.push(Sprite({
-          id: 'page',
-          width: 8,
-          height: 8,
-          x: i*8,
-          y: j*8,
-          //anchor: {x:0, y:0},
-          yMax: j*8 - 3,
-          yMin: j*8,
-          p: 0,
-          dir: -1,
-          image: temp,
-          isHit: false,
-          timer: 0,
-          update: function () {
-            const inQuad = quad.get(this)
-            //console.log("inQuad", inQuad.length)
-            let col = false
-            
-            if (inQuad.length > 0) {
-              //console.log("slime touch ", inQuad.length)
-              for (let i = 0; i < inQuad.length && !col; i++) {
-                let land = inQuad[i]
-                if (land.id === 'player') {
-                  if (collided(this, land)) {
-                        
-                        console.log("PAGE COLLECTED")
-                        col = true
-                        this.isHit = true
-                      }
-                }
-              }
-            }
-            
-            this.y = lerp(this.yMin, this.yMax, this.p)
-            this.p += 0.03 * this.dir
-            if (this.p >= 1) {
-              this.dir = -1
-            }
-            if (this.p <= 0) {
-              this.dir = 1
-            }
-          }
-        }))
-        console.log('page at', i*8, j*8)
-      }
-    }
-  }
-
   maptilespritescontext.clearRect(0, 0, 8, 8)
   maptilesprites.width = 8
   maptilesprites.height = 8
@@ -761,16 +524,293 @@ spriteImage.onload = () => {
   const attackImg = new Image()
   attackImg.src = maptilesprites.toDataURL("image/png")
   attacks[0].image = attackImg
-  gameScene = new Scene({id: 'game',
-  children:[...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]}) 
+
+  let mapcontext = undefined
+  const mapcanvas = document.createElement("canvas") 
+  mapcontext = mapcanvas.getContext("2d") 
+  mapcontext.drawImage(spriteImage, 0, 32, 40, 8, 0, 0, 40, 8) 
+  maptilesprites.width = 8
+  maptilesprites.height = 8
+
+  maptilespritescontext.clearRect(0, 0, 8, 8)
+  maptilesprites.width = 8
+  maptilesprites.height = 8
+  maptilespritescontext.drawImage(spriteImage, 40, 8, 8, 8, 0, 0, 8, 8)       
+  let pageImage = new Image()
+  pageImage.src = maptilesprites.toDataURL("image/png")
+   
+  resetGameState = () => {
+    quad.clear()
+    enemiesInScene = []
+    landSprite = []
+    pages = []
+    pc.x = 10
+    pc.y = 32
+    pc.hp = "LLL"
+    pc.life = "LLL"
+    camFocus.x = pc.x
+    camFocus.y = pc.y
+
+    for (let i = 0; i < 40; i++) {
+      for (let j = 0; j < 8; j++) {
+        const pixelData = mapcontext.getImageData(i, j, 1, 1).data 
+        if (pixelData[0] === 245) {
+          //console.log("drawing at ", i, " and ", j) 
+          
+          maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
+          const chance = Math.random()
+          if (chance > 0.5) {
+            //console.log('sprite 1', chance)
+            maptilespritescontext.drawImage(spriteImage, 32, 0, 8, 8, 0, 0, 8, 8) 
+          } else {
+            //console.log('sprite 2', chance)
+            maptilespritescontext.drawImage(spriteImage, 40, 0, 8, 8, 0, 0, 8, 8) 
+          }
+          if (chance > 0.5) {
+            //console.log('sprite 1', chance)
+            maptilespritescontext.translate(8, 0)
+            maptilespritescontext.scale(-1, 1) 
+          } 
+          let temp = new Image()
+          temp.src = maptilesprites.toDataURL("image/png")
+          landSprite.push(
+            Sprite({
+              id: 'land',
+              width: 8,
+              height: 8,
+              x: i * 8,
+              y: j * 8,
+              floor: true,
+              image: temp,
+            })
+          )
+        }
+        if (pixelData[0] === 52) {        
+          enemiesInScene.push(Sprite({
+            id: 'slime',
+            width: 8,
+            height: 8,
+            x: i*8,
+            y: j*8,
+            dir: Math.random() > 0.5 ? -1 : 1,
+            isHit: false,
+            animations: enemyssheet.animations,
+            currentAnimation: enemyssheet.animations['slime'],
+            update: function () {
+              const inQuad = quad.get(this)
+              //console.log("inQuad", inQuad.length)
+              let col = false
+              
+              if (inQuad.length > 0) {
+                //console.log("slime touch ", inQuad.length)
+                for (let i = 0; i < inQuad.length && !col; i++) {
+                  let land = inQuad[i]
+                  if (land.id === 'land' && 
+                  this.y + 8 >= land.y && this.y + 7 <= land.y && 
+                  this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
+                    col = true
+                  }
+                }
+              }
+  
+              if (!col) {
+                this.dir = this.dir * -1
+              }
+              
+              this.x += this.dir * 0.3
+            },
+            render: function () {
+              this.currentAnimation.update()
+              this.draw()
+            }
+          }))
+          console.log("setting slime", i*8, j*8)
+        }
+  
+        if (pixelData[0] === 88) {
+          maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
+          maptilespritescontext.drawImage(spriteImage, 32, 16, 8, 8, 0, 0, 8, 8)
+          const wolfAttackImg = new Image()
+          wolfAttackImg.src = maptilesprites.toDataURL("image/png")
+  
+          enemiesInScene.push(Sprite({
+            id: 'wolfman',
+            width: 8,
+            height: 8,
+            x: i*8,
+            y: j*8,
+            dir: Math.random() > 0.5 ? -1 : 1,
+            isHit: false,
+            turnFrames: 0,
+            toShootFrames: 35,
+            shootingFrames: 15,
+            animations: enemyssheet2.animations,
+            currentAnimation: enemyssheet2.animations['wolfman'],
+            update: function () {
+              const inQuad = quad.get(this)
+              //console.log("inQuad", inQuad.length)
+              let col = false
+              
+              if (inQuad.length > 0) {
+                //console.log("slime touch ", inQuad.length)
+                for (let i = 0; i < inQuad.length && !col; i++) {
+                  let land = inQuad[i]
+                  const offset = this.dir === 1 ? 7 : 2
+                  if (land.id === 'land' &&  
+                  this.y + 9 >= land.y &&
+                  this.x + offset >= land.x && this.x + offset <= land.x + 8) {
+                    col = true
+                  }
+                }
+              }
+  
+              if (!col && this.turnFrames === 0) {
+                this.dir = this.dir * -1
+                this.turnFrames = 30
+              }
+  
+              if (this.turnFrames > 0) {
+                this.turnFrames--
+              }
+  
+              if (this.toShootFrames > 0 ) {
+                this.toShootFrames--
+                if (this.toShootFrames <= 0) {
+                  this.shootingFrames = 45
+                }
+              }
+  
+              if (this.shootingFrames > 0 && (Math.abs(this.x - pc.x) < 90)) {
+                this.shootingFrames--
+                if (this.shootingFrames === 15) {
+                  
+                  const dir = this.dir
+                  const pos = {x:this.x, y:this.y}
+                  //console.log('WOLFMAN SHOOTING at' ,pos)
+                  const newArrow = Sprite({
+                    id: 'arrow',
+                    width: 8,
+                    height: 8,
+                    dx: 0.8 * dir,
+                    x: dir === 1 ? pos.x: pos.x + 8, 
+                    y:pos.y,
+                    scaleX: dir,
+                    image: wolfAttackImg,
+                    update: function() {
+                        const inQuad = quad.get(this)
+                        let col = false
+                        if (inQuad.length > 0) {
+                          
+                          for (let i = 0; i < inQuad.length && !col; i++) {
+                            let land = inQuad[i]
+                            if (land.id === 'player') {
+                              if (collided(this, land)) {
+                                    col = true
+                              }
+                            }    
+                          }      
+                        }
+  
+                        this.advance()
+  
+                        if (Math.abs(this.x - pc.x) > 90) {
+                          enemiesInScene.splice(enemiesInScene.indexOf(newArrow), 1)
+                          gameScene.removeChild(newArrow)
+                        }
+                    }
+                  })
+                  enemiesInScene.push(newArrow)
+                  gameScene.addChild(newArrow)     
+                } else {
+                    if (this.shootingFrames <= 0) {
+                      this.toShootFrames = 65
+                    }
+                }
+              } else {
+                this.x += this.dir * 0.3
+              }
+            },
+            render: function () {
+              if (this.dir === 1) {
+                this.currentAnimation = this.animations["wolfman"]
+              } else {
+                this.currentAnimation = this.animations["fwolfman"]
+              }
+              
+              this.currentAnimation.update()
+              this.draw()
+            }
+          }))
+          console.log("setting wolfman", i*8, j*8)
+        }
+  
+        if (pixelData[0] === 228) {
+          
+          pages.push(Sprite({
+            id: 'page',
+            width: 8,
+            height: 8,
+            x: i*8,
+            y: j*8,
+            //anchor: {x:0, y:0},
+            yMax: j*8 - 3,
+            yMin: j*8,
+            p: 0,
+            dir: -1,
+            image: pageImage,
+            isHit: false,
+            timer: 0,
+            update: function () {
+              const inQuad = quad.get(this)
+              //console.log("inQuad", inQuad.length)
+              let col = false
+              
+              if (inQuad.length > 0) {
+                //console.log("slime touch ", inQuad.length)
+                for (let i = 0; i < inQuad.length && !col; i++) {
+                  let land = inQuad[i]
+                  if (land.id === 'player') {
+                    if (collided(this, land)) {
+                          
+                          console.log("PAGE COLLECTED")
+                          col = true
+                          this.isHit = true
+                        }
+                  }
+                }
+              }
+              
+              this.y = lerp(this.yMin, this.yMax, this.p)
+              this.p += 0.03 * this.dir
+              if (this.p >= 1) {
+                this.dir = -1
+              }
+              if (this.p <= 0) {
+                this.dir = 1
+              }
+            }
+          }))
+          console.log('page at', i*8, j*8)
+        }
+      }
+    }
+    gameScene = new Scene({id: 'game',
+    children:[...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]})
+  }
+  
+  resetGameState()
 } 
 
+let firstLoad = true
 const states = []
 states.push(GameLoop({
   update() {
     if (keyPressed("a")) {
-      pc.hp = "LLL"
-      pc.life = "LLL"
+      if (!firstLoad) {
+        resetGameState()
+      } else {
+        firstLoad = false
+      }
       states[0].stop()
       states[1].start() 
     }
@@ -806,8 +846,7 @@ states.push(GameLoop({
       for (let i = pages.length - 1; i >= 0; i--) {
         const page = pages[i]
         if (page.isHit) {
-          foundPages--
-          console.log(foundPages, 'pages left')
+          console.log(pages.length - 1, 'pages left')
           gameScene.removeChild(page)
           pages.splice(pages.indexOf(page), 1)
         } else {
@@ -841,7 +880,7 @@ states.push(GameLoop({
         }
       }
 
-      if (foundPages <= 0) {
+      if (pages.length <= 0) {
         states[1].stop()
         states[2].start()
       }
@@ -866,6 +905,7 @@ states.push(GameLoop({
 states.push(GameLoop({
   update() {
     if (keyPressed("a")) {
+      states[2].stop()
       states[0].start() 
     }
   },
