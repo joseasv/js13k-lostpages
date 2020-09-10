@@ -20,7 +20,8 @@ import {
   Scene,
   Quadtree,
   GameObject,
-  lerp
+  lerp, 
+  randInt
 } from "kontra"
 import {initFont} from "tinyfont"
 import {font} from "tinyfont/font-tiny"
@@ -50,10 +51,16 @@ let pc = undefined
 let camFocus = GameObject({update: function () {
   if (pc.x >= this.x + 16) {
     this.x += pc.x - (this.x + 16)
+    if (this.x >= 128 * 2 + 32) {
+      this.x = 128 * 2 + 32
+    }
   }
 
   if (pc.x <= this.x - 16) {
     this.x -= (this.x - 16) - pc.x
+    if (this.x <= 10) {
+      this.x = 10
+    }
   }
 }})
 
@@ -828,10 +835,48 @@ spriteImage.onload = () => {
       }
     }
     
+    const bgGroundRocks = []
+    for (let i = 0; i < 30; i++) {
+      bgGroundRocks.push({x:i * 20 + Math.random() * 10, y:randInt(110, 124)})
+    }
+
+    let bg = Sprite({
+      x: camFocus.x - 64,
+      y: 0,
+      width: 450,
+      height: 128,
+      update: function() {
+        
+        this.y = camFocus.y - 64
+      },
+      render: function() {
+        this.context.fillStyle = `rgb(62, 33, 55)`
+        this.context.fillRect(0, 0, 450, 128)
+        this.context.fillStyle = `rgb(52, 133, 157)`
+        this.context.fillRect(0, 0, 450, 25)
+        this.context.fillStyle = `rgb(126, 196, 193)`
+        this.context.fillRect(0, 25, 450, 15)
+        this.context.fillStyle = `rgb(154, 99, 72)`
+        //this.context.fillRect(0, 120, 128, 8)
+        this.context.lineWidth = 1
+        
+        this.context.beginPath()
+        this.context.lineTo(0, 128)
+        for (let i = 0; i < 20; i++) {
+          const point = bgGroundRocks[i]
+          this.context.lineTo(point.x, point.y)
+        }
+        this.context.lineTo(bgGroundRocks[bgGroundRocks.length - 1].x, 128)
+        
+        this.context.closePath()
+        this.context.fill()
+        //this.context.fill()
+      }
+    })
     //camFocus.addChild(bg)
     gameScene = new Scene({id: 'game',
     
-    children:[ ...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]})
+    children:[bg, ...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]})
   }
   
   resetGameState()
@@ -939,12 +984,13 @@ states.push(GameLoop({
     if (gameScene!==undefined) {
       
       
+      
+      gameScene.render()
       showText("LIFE", 0, 10, 4, 'rgb(245, 237, 186)')
       showText(pc.life, 12, 10, 4, 'rgb(100, 125, 52)')
       showText("HP", 0, 16, 4, 'rgb(245, 237, 186)')
       showText(pc.hp, 8, 16, 4, 'rgb(210, 100, 113)')
       
-      gameScene.render()
     }
   },
 }))
