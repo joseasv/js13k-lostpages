@@ -43,6 +43,23 @@ let gameScene = undefined
 
 let landSprite = [] 
 let pc = undefined
+const title = Sprite({
+  x:48, y:24,
+  width:32, height:64,
+  dir:1,
+  p: 0,
+  yMax: 24 -3,
+  yMin: 24 + 3 ,
+  update: function(){
+    this.y = lerp(this.yMin, this.yMax, this.p)
+    this.p += 0.02 * this.dir
+    if (this.p >= 1) {
+      this.dir = -1
+    }
+    if (this.p <= 0) {
+      this.dir = 1
+    }
+  }})
 
 /**
  * The camera should focus on this object and not the player.
@@ -555,6 +572,14 @@ spriteImage.onload = () => {
   maptilespritescontext.drawImage(spriteImage, 40, 8, 8, 8, 0, 0, 8, 8)       
   let pageImage = new Image()
   pageImage.src = maptilesprites.toDataURL("image/png")
+
+  maptilespritescontext.clearRect(0, 0, 32, 64)
+  maptilesprites.width = 32
+  maptilesprites.height = 64
+  maptilespritescontext.drawImage(spriteImage, 0, 40, 32, 64, 0, 0, 32, 64)       
+  let titleimage = new Image()
+  titleimage.src = maptilesprites.toDataURL("image/png")
+  title.image = titleimage
    
   resetGameState = () => {
     quad.clear()
@@ -878,7 +903,9 @@ spriteImage.onload = () => {
   }
   
   resetGameState()
-} 
+}
+
+
 
 let firstLoad = true
 let delay = 0
@@ -900,10 +927,13 @@ states.push(GameLoop({
         states[0].stop()
         states[1].start()
       }
+    } else {
+      title.update()
     }
+    
   },
   render() {
-    showText("LOST PAGES", 44, 20, 4, 'rgb(245, 237, 186)')
+    title.render()
     showText("RAGNATIC", 50, 90, 4, 'rgb(245, 237, 186)')
     showText("2020", 55, 100, 4, 'rgb(245, 237, 186)')
   }
