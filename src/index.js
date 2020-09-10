@@ -857,8 +857,6 @@ spriteImage.onload = () => {
         this.context.fillStyle = `rgb(126, 196, 193)`
         this.context.fillRect(0, 25, 450, 15)
         this.context.fillStyle = `rgb(154, 99, 72)`
-        //this.context.fillRect(0, 120, 128, 8)
-        this.context.lineWidth = 1
         
         this.context.beginPath()
         this.context.lineTo(0, 128)
