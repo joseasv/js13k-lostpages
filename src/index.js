@@ -23,8 +23,8 @@ import {
   lerp, 
   randInt
 } from "kontra"
-import {initFont} from "tinyfont"
-import {font} from "tinyfont/font-tiny"
+import {font, initFont} from "tinyfont"
+//import {font} from "tinyfont/font-tiny"
 import spritesheet from "./assets/images/sprites/spritesheet.png"
 
 let { canvas, context } = init()
@@ -60,6 +60,11 @@ const title = Sprite({
       this.dir = 1
     }
   }})
+
+const uiSprite = Sprite({
+  x:0, y:0,
+  width:13, height:9,
+})
 
 /**
  * The camera should focus on this object and not the player.
@@ -350,8 +355,8 @@ spriteImage.onload = () => {
     dt: 1/60,
     width: 8,
     height: 8,
-    hp: "LLL",
-    life: "LLL",
+    hp: "111",
+    life: "111",
     animations: ssheet.animations,
     currentAnimation: ssheet.animations['idle'],
     inGround: false,
@@ -382,25 +387,25 @@ spriteImage.onload = () => {
         this.x += this.dx + g*this.dt 
       }
 
-      if (keyPressed("a") && this.inGround && !this.jumpButtonPressed) {
+      if (keyPressed("z") && this.inGround && !this.jumpButtonPressed) {
         this.jumpButtonPressed = true
         this.jumping = true
         this.baseY = this.y
         this.inGround = false
       } else {
-        if (keyPressed("a") === false) {
+        if (keyPressed("z") === false) {
           this.jumpButtonPressed = false
         }
       }
 
-      if (keyPressed("s") && this.inGround && !this.attackButtonPressed) {
+      if (keyPressed("x") && this.inGround && !this.attackButtonPressed) {
         this.attackButtonPressed = true
         this.attacking = true
         this.animations["attack"].reset()
         this.animations["fattack"].reset()
         this.attackTimer = this.animations["attack"].frameRate * this.animations["attack"].frames.length + 5
       } else {
-        if (keyPressed("s") === false) {
+        if (keyPressed("x") === false) {
           this.attackButtonPressed = false
         }
       }
@@ -588,8 +593,8 @@ spriteImage.onload = () => {
     pages = []
     pc.x = 10
     pc.y = 32
-    pc.hp = "LLL"
-    pc.life = "LLL"
+    pc.hp = "111"
+    pc.life = "111"
     camFocus.x = pc.x
     camFocus.y = pc.y
 
@@ -912,7 +917,7 @@ let delay = 0
 const states = []
 states.push(GameLoop({
   update() {
-    if (keyPressed("a")) {
+    if (keyPressed("x")) {
       if (!firstLoad) {
         resetGameState()
       } else {
@@ -934,8 +939,9 @@ states.push(GameLoop({
   },
   render() {
     title.render()
-    showText("RAGNATIC", 50, 90, 4, 'rgb(245, 237, 186)')
-    showText("2020", 55, 100, 4, 'rgb(245, 237, 186)')
+    showText("PRESS X TO START", 35, 85, 5, 'rgb(245, 237, 186)')
+    showText("RAGNATIC", 45, 94, 5, 'rgb(245, 237, 186)')
+    showText("2020", 55, 100, 5, 'rgb(245, 237, 186)')
   }
 })) 
 
@@ -987,7 +993,7 @@ states.push(GameLoop({
       }
 
       if (pc.hp.length === 0) {
-        pc.hp = "LLL"
+        pc.hp = "111"
         pc.life = pc.life.substr(0, pc.life.length - 1)
         if (pc.life.length === 0) {
           states[1].stop()
@@ -1014,10 +1020,10 @@ states.push(GameLoop({
       
       
       gameScene.render()
-      showText("LIFE", 0, 10, 4, 'rgb(245, 237, 186)')
-      showText(pc.life, 12, 10, 4, 'rgb(100, 125, 52)')
-      showText("HP", 0, 16, 4, 'rgb(245, 237, 186)')
-      showText(pc.hp, 8, 16, 4, 'rgb(210, 100, 113)')
+      showText("LIFE", 0, 10, 5, 'rgb(245, 237, 186)')
+      showText(pc.life, 16, 10, 5, 'rgb(100, 125, 52)')
+      showText("HP", 0, 16, 5, 'rgb(245, 237, 186)')
+      showText(pc.hp, 16, 16, 5, 'rgb(210, 100, 113)')
       
     }
   },
@@ -1025,7 +1031,7 @@ states.push(GameLoop({
 
 states.push(GameLoop({
   update() {
-    if (keyPressed("a")) {
+    if (keyPressed("x")) {
       delay = 30 
     }
 
@@ -1038,8 +1044,8 @@ states.push(GameLoop({
     }
   },
   render() {
-    showText("CONGRATULATIONS!!", 34, 60, 4, 'rgb(245, 237, 186)')
-    showText("YOU FOUND ALL PAGES!!", 28, 54, 4, 'rgb(245, 237, 186)')
+    showText("CONGRATULATIONS!!", 34, 60, 5, 'rgb(245, 237, 186)')
+    showText("YOU FOUND ALL PAGES!!", 28, 54, 5, 'rgb(245, 237, 186)')
   }
 }))
 
