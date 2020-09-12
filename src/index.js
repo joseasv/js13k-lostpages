@@ -61,11 +61,6 @@ const title = Sprite({
     }
   }})
 
-const uiSprite = Sprite({
-  x:0, y:0,
-  width:13, height:9,
-})
-
 /**
  * The camera should focus on this object and not the player.
  * This makes camera movements less vomit-inducing
@@ -370,24 +365,39 @@ spriteImage.onload = () => {
     jumpButtonPressed: false,
     attackButtonPressed: false,
     animStarted: false,
+    isSpawing: true,
+    spawningPercent: 0,
+    spawningTimer: 0,
+    spawningDir: 1,
+    spawnInitY: 0,
+    spawnEndY: 0, 
     attackTimer: 0,
     update: function () {
-      
+      if (this.isSpawing) {
+        //console.log("beginning", this.spawnInitY, " end", this.spawnEndY)
+        this.y = lerp(this.spawnInitY, this.spawnEndY, this.spawningPercent)
+        //console.log(this.spawningPercent, this.y)
+        this.spawningPercent += 0.01
+        if (this.spawningPercent >= 1) {
+          this.isSpawing = false
+        }
+
+      }
       this.isMoving = false 
 
-      if (keyPressed("left") && !this.attacking && this.hurtFrames===0)  {
+      if (keyPressed("left") && !this.attacking && this.hurtFrames===0 && !this.isSpawing)  {
         this.isMoving = true 
         this.flipped = true 
         this.x -= this.dx + g*this.dt 
       }
   
-      if (keyPressed("right") && !this.attacking && this.hurtFrames===0) {
+      if (keyPressed("right") && !this.attacking && this.hurtFrames===0 && !this.isSpawing) {
         this.isMoving = true 
         this.flipped = false 
         this.x += this.dx + g*this.dt 
       }
 
-      if (keyPressed("z") && this.inGround && !this.jumpButtonPressed) {
+      if (keyPressed("z") && this.inGround && !this.jumpButtonPressed && !this.isSpawing) {
         this.jumpButtonPressed = true
         this.jumping = true
         this.baseY = this.y
@@ -398,7 +408,7 @@ spriteImage.onload = () => {
         }
       }
 
-      if (keyPressed("x") && this.inGround && !this.attackButtonPressed) {
+      if (keyPressed("x") && this.inGround && !this.attackButtonPressed && !this.isSpawing) {
         this.attackButtonPressed = true
         this.attacking = true
         this.animations["attack"].reset()
@@ -547,9 +557,24 @@ spriteImage.onload = () => {
           this.currentAnimation = this.animations["hurt"]
         }
       }
-        this.currentAnimation.update()
-        this.draw()
+      this.currentAnimation.update()
+
+      
+      if (this.isSpawing) {
+        this.context.fillStyle = `rgb(245, 237, 186)`
+        let radius = lerp(4, 8, this.spawningTimer)
+        this.context.arc(4, 4, radius, 0, Math.PI * 2)
+        this.spawningTimer += 0.07 * this.spawningDir
+        if (this.spawningTimer >= 1) {
+          this.spawningDir *= -1
+        }
+        if (this.spawningTimer <= 0) {
+          this.spawningDir *= -1
+        }
+        this.context.fill()
       }
+      this.draw() 
+    }
   })
 
   const maptilesprites = document.createElement("canvas") 
@@ -591,8 +616,13 @@ spriteImage.onload = () => {
     enemiesInScene = []
     landSprite = []
     pages = []
+    pc.flipped = false
     pc.x = 10
     pc.y = 32
+    pc.spawnInitY = -20
+    pc.spawnEndY = 32
+    pc.isSpawing = true
+    pc.spawningPercent = 0
     pc.hp = "111"
     pc.life = "111"
     camFocus.x = pc.x
@@ -886,8 +916,8 @@ spriteImage.onload = () => {
         this.context.fillRect(0, 0, 450, 25)
         this.context.fillStyle = `rgb(126, 196, 193)`
         this.context.fillRect(0, 25, 450, 15)
-        this.context.fillStyle = `rgb(154, 99, 72)`
         
+        this.context.fillStyle = `rgb(154, 99, 72)`
         this.context.beginPath()
         this.context.lineTo(0, 128)
         for (let i = 0; i < 20; i++) {
@@ -897,7 +927,9 @@ spriteImage.onload = () => {
         this.context.lineTo(bgGroundRocks[bgGroundRocks.length - 1].x, 128)
         
         this.context.closePath()
+        
         this.context.fill()
+        
         //this.context.fill()
       }
     })
@@ -911,7 +943,7 @@ spriteImage.onload = () => {
 }
 
 
-
+let endAnimation = false
 let firstLoad = true
 let delay = 0
 const states = []
@@ -929,6 +961,7 @@ states.push(GameLoop({
     if (delay > 0) {
       delay--
       if (delay <= 0) {
+        endAnimation = false
         states[0].stop()
         states[1].start()
       }
@@ -966,13 +999,15 @@ states.push(GameLoop({
           quad.add(enemiesInScene[i])
         }        
       }
-
+      let lastPage = undefined
       for (let i = pages.length - 1; i >= 0; i--) {
         const page = pages[i]
         if (page.isHit) {
+          lastPage = page
           console.log(pages.length - 1, 'pages left')
           gameScene.removeChild(page)
           pages.splice(pages.indexOf(page), 1)
+          
         } else {
           quad.add(pages[i])
         }
@@ -980,7 +1015,7 @@ states.push(GameLoop({
       }
       //console.log("quad length", quad.)
       if (pc.y > 128) {
-        pc.hp = "LLL"  
+        pc.hp = "111"  
         pc.life = pc.life.substr(0, pc.life.length - 1)
       
         if (pc.life.length === 0) {
@@ -1005,8 +1040,22 @@ states.push(GameLoop({
       }
 
       if (pages.length <= 0) {
-        states[1].stop()
-        states[2].start()
+        if (!endAnimation) {
+          pc.spawnInitY = lastPage.y
+          pc.spawnEndY = lastPage.y - 30
+          pc.spawningPercent = 0
+          pc.isSpawing = true
+          endAnimation = true
+        } else {
+          //console.log("spawning", pc.isSpawing)
+          if (pc.spawningPercent >= 1) {
+            states[1].stop()
+            states[2].start()
+          }
+          
+        }
+        
+        
       }
 
       gameScene.update()
