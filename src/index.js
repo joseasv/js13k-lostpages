@@ -20,37 +20,37 @@ import {
   Scene,
   Quadtree,
   GameObject,
-  lerp, 
+  lerp,
   randInt
 } from "kontra"
-import {font, initFont} from "tinyfont"
+import { font, initFont } from "tinyfont"
 //import {font} from "tinyfont/font-tiny"
 import spritesheet from "./assets/images/sprites/spritesheet.png"
 
 let { canvas, context } = init()
 
 const showText = initFont(font, context)
-context.imageSmoothingEnabled = false 
-initKeys() 
+context.imageSmoothingEnabled = false
+initKeys()
 
 // I make heavy use (like too much) of the KontraJS quadtree in collisions
 const quad = Quadtree({
-  bounds: {x:0, y:0, width:128, height:128},
+  bounds: { x: 0, y: 0, width: 128, height: 128 },
   maxObjects: 10
 })
 
 let gameScene = undefined
 
-let landSprite = [] 
+let landSprite = []
 let pc = undefined
 const title = Sprite({
-  x:48, y:24,
-  width:32, height:64,
-  dir:1,
+  x: 48, y: 24,
+  width: 32, height: 64,
+  dir: 1,
   p: 0,
-  yMax: 24 -3,
-  yMin: 24 + 3 ,
-  update: function(){
+  yMax: 24 - 3,
+  yMin: 24 + 3,
+  update: function () {
     this.y = lerp(this.yMin, this.yMax, this.p)
     this.p += 0.02 * this.dir
     if (this.p >= 1) {
@@ -59,34 +59,37 @@ const title = Sprite({
     if (this.p <= 0) {
       this.dir = 1
     }
-  }})
+  }
+})
 
 /**
  * The camera should focus on this object and not the player.
  * This makes camera movements less vomit-inducing
  */
-let camFocus = GameObject({update: function () {
-  if (pc.x >= this.x + 16) {
-    this.x += pc.x - (this.x + 16)
-    if (this.x >= 128 * 2 + 32) {
-      this.x = 128 * 2 + 32
+let camFocus = GameObject({
+  update: function () {
+    if (pc.x >= this.x + 16) {
+      this.x += pc.x - (this.x + 16)
+      if (this.x >= 128 * 2 + 32) {
+        this.x = 128 * 2 + 32
+      }
     }
-  }
 
-  if (pc.x <= this.x - 16) {
-    this.x -= (this.x - 16) - pc.x
-    if (this.x <= 10) {
-      this.x = 10
+    if (pc.x <= this.x - 16) {
+      this.x -= (this.x - 16) - pc.x
+      if (this.x <= 10) {
+        this.x = 10
+      }
     }
   }
-}})
+})
 
 /**
  * Get collision box of objects
  * @param {GameObject} obj 
  */
-function collbox (obj) {
-  return {x1: obj.x, x2:obj.x + obj.width, y1: obj.y, y2: obj.y + obj.height}
+function collbox(obj) {
+  return { x1: obj.x, x2: obj.x + obj.width, y1: obj.y, y2: obj.y + obj.height }
 }
 
 /**
@@ -97,13 +100,13 @@ function collbox (obj) {
 function collided(obj1, obj2) {
   const box1 = collbox(obj1)
   const box2 = collbox(obj2)
-  if (box1.x1 >= box2.x2 || 
+  if (box1.x1 >= box2.x2 ||
     box1.y1 >= box2.y2 ||
     box2.x1 >= box1.x2 ||
     box2.y1 >= box1.y2) {
-      return false
-    } 
-    return true
+    return false
+  }
+  return true
 }
 
 let arrowPool = {
@@ -116,7 +119,7 @@ for (let i = 0; i < 4; i++) {
     id: "enemy",
     width: 8,
     height: 8
-}))
+  }))
 }
 
 let enemiesInScene = []
@@ -125,29 +128,29 @@ let enemiesInScene = []
  * I was going to create like 2 or 3 attacks for the player
  * but I ended using just one
  */
-const attacks =[]
+const attacks = []
 attacks.push(Sprite({
   id: 'attack',
   width: 8,
   height: 8,
-  x:0, 
-  y:0,
+  x: 0,
+  y: 0,
   opacity: 0,
   time: 0,
-  update: function() {
+  update: function () {
     if (this.opacity !== 0) {
       const inQuad = quad.get(this)
       let col = false
       if (inQuad.length > 0 && this.opacity !== 0) {
-        
+
         for (let i = 0; i < inQuad.length && !col; i++) {
           let land = inQuad[i]
           if (land.id === 'enemy') {
             if (collided(this, land)) {
-                  col = true
-                  land.isHit = true
-                }
-          }    
+              col = true
+              land.isHit = true
+            }
+          }
         }
       }
     }
@@ -164,7 +167,7 @@ const deadFX = Sprite({
   visFrames: 0,
   opacity: 0,
   visible: false,
-  update: function() {
+  update: function () {
     if (this.opacity === 1 && !this.visible) {
       this.visible = true
       this.visFrames = 20
@@ -175,12 +178,12 @@ const deadFX = Sprite({
       if (this.visFrames <= 0) {
         this.visible = false
         this.opacity = 0
-        
+
       }
     }
 
   },
-  render: function() {
+  render: function () {
     if (this.visible) {
       this.context.imageSmoothingEnabled = false
       this.context.strokeStyle = `rgb(245, 237, 186)`
@@ -188,30 +191,32 @@ const deadFX = Sprite({
       this.context.translate(4, 4)
       this.context.rotate(Math.round(Math.random() * 10))
       this.context.rect(0, 0, this.visFrames % 5, this.visFrames % 5)
+      this.context.closePath()
       this.context.stroke()
     }
-    
+
   }
 })
 
+let batAnimation = undefined
 // An array of the items to collect
 let pages = []
 
 let resetGameState = undefined
 /**
  * 
- */ 
-const spriteImage = new Image() 
-spriteImage.src = spritesheet 
+ */
+const spriteImage = new Image()
+spriteImage.src = spritesheet
 spriteImage.onload = () => {
 
-  const flippedcanvas = document.createElement("canvas") 
-  const flippedcontext = flippedcanvas.getContext("2d") 
+  const flippedcanvas = document.createElement("canvas")
+  const flippedcontext = flippedcanvas.getContext("2d")
   flippedcontext.translate(32, 0)
-  flippedcontext.scale(-1,1)
-  flippedcontext.drawImage(spriteImage, 0, 0, 32, 24, 0, 0, 32, 24) 
-  
-  const totalanimcanvas = document.createElement("canvas") 
+  flippedcontext.scale(-1, 1)
+  flippedcontext.drawImage(spriteImage, 0, 0, 32, 24, 0, 0, 32, 24)
+
+  const totalanimcanvas = document.createElement("canvas")
   totalanimcanvas.height = 48
   totalanimcanvas.width = 32
   const totalanimcontext = totalanimcanvas.getContext('2d')
@@ -285,7 +290,7 @@ spriteImage.onload = () => {
         loop: false
       },
     },
-  }) 
+  })
 
   totalanimcontext.clearRect(0, 0, totalanimcanvas.width, totalanimcanvas.height)
   totalanimcanvas.height = 8
@@ -306,11 +311,30 @@ spriteImage.onload = () => {
     }
   })
 
+  totalanimcontext.clearRect(0, 0, totalanimcanvas.width, totalanimcanvas.height)
+  totalanimcanvas.height = 8
+  totalanimcanvas.width = 16
+  totalanimcontext.drawImage(spriteImage, 32, 24, 16, 8, 0, 0, 16, 8)
+  let enemyssheetImage3 = new Image()
+  enemyssheetImage3.src = totalanimcanvas.toDataURL("image/png")
+  batAnimation = SpriteSheet({
+    image: enemyssheetImage3,
+    frameWidth: 8,
+    frameHeight: 8,
+    animations: {
+      bat: {
+        frames: [0, 1],
+        frameRate: 3,
+        loop: true,
+      },
+    }
+  })
+
   flippedcontext.clearRect(0, 0, 16, 8)
   flippedcanvas.height = 8
   flippedcanvas.width = 16
   flippedcontext.translate(16, 0)
-  flippedcontext.scale(-1,1)
+  flippedcontext.scale(-1, 1)
   flippedcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
   totalanimcontext.clearRect(0, 0, 32, 16)
   totalanimcanvas.height = 16
@@ -339,7 +363,9 @@ spriteImage.onload = () => {
 
   const jumpHeight = 16
   const timeToApex = 80
-  const g = (2 * jumpHeight)/(timeToApex^2)
+  const g = (2 * jumpHeight) / (timeToApex ^ 2)
+
+  
 
   pc = Sprite({
     id: 'player',
@@ -347,7 +373,7 @@ spriteImage.onload = () => {
     y: 32,
     dx: 0.6,
     dy: 0.6,
-    dt: 1/60,
+    dt: 1 / 60,
     width: 8,
     height: 8,
     hp: "111",
@@ -370,7 +396,7 @@ spriteImage.onload = () => {
     spawningTimer: 0,
     spawningDir: 1,
     spawnInitY: 0,
-    spawnEndY: 0, 
+    spawnEndY: 0,
     attackTimer: 0,
     update: function () {
       if (this.isSpawing) {
@@ -383,18 +409,18 @@ spriteImage.onload = () => {
         }
 
       }
-      this.isMoving = false 
+      this.isMoving = false
 
-      if (keyPressed("left") && !this.attacking && this.hurtFrames===0 && !this.isSpawing)  {
-        this.isMoving = true 
-        this.flipped = true 
-        this.x -= this.dx + g*this.dt 
+      if (keyPressed("left") && !this.attacking && this.hurtFrames === 0 && !this.isSpawing) {
+        this.isMoving = true
+        this.flipped = true
+        this.x -= this.dx + g * this.dt
       }
-  
-      if (keyPressed("right") && !this.attacking && this.hurtFrames===0 && !this.isSpawing) {
-        this.isMoving = true 
-        this.flipped = false 
-        this.x += this.dx + g*this.dt 
+
+      if (keyPressed("right") && !this.attacking && this.hurtFrames === 0 && !this.isSpawing) {
+        this.isMoving = true
+        this.flipped = false
+        this.x += this.dx + g * this.dt
       }
 
       if (keyPressed("z") && this.inGround && !this.jumpButtonPressed && !this.isSpawing) {
@@ -428,24 +454,24 @@ spriteImage.onload = () => {
       }
 
       if (this.jumping) {
-        this.isMoving = true 
-        this.y -= Math.sqrt(2*g*jumpHeight) 
+        this.isMoving = true
+        this.y -= Math.sqrt(2 * g * jumpHeight)
 
         if (this.y <= this.baseY - jumpHeight) {
           this.falling = true
           this.jumping = false
         }
-      } 
-      
-      
+      }
+
+
 
       const inQuad = quad.get(this)
       //console.log("inQuad", inQuad.length)
       let col = false
-      if (inQuad.length > 0) {
+      if (inQuad.length > 0 && !this.isSpawing) {
         for (let i = 0; i < inQuad.length; i++) {
           let land = inQuad[i]
-          if (land.id === 'land' && this.y + 9 >= land.y && this.y + 7 <= land.y && 
+          if (land.id === 'land' && this.y + 9 >= land.y && this.y + 7 <= land.y &&
             this.x + 5 >= land.x && this.x + 3 <= land.x + 8) {
             col = true
             this.y = land.y - 8
@@ -453,30 +479,30 @@ spriteImage.onload = () => {
             this.falling = false
             this.lastLand = land
           }
-          
-          if ((land.id === 'enemy') && 
-          collided(land, this) && this.hurtFrames === 0) {
+
+          if ((land.id === 'enemy') &&
+            collided(land, this) && this.hurtFrames === 0) {
             console.log("player hurt by", land.id, " at ", land.x, land.y)
             console.log('PLAYER HURT')
-            
+
             this.hp = this.hp.substr(0, this.hp.length - 1)
-            
+
             this.hurtFrames = 30
           }
         }
       }
-  
-      if(this.hurtFrames > 0) {
+
+      if (this.hurtFrames > 0) {
         this.hurtFrames--
       }
-      
+
       if (!col && !this.jumping) {
         //console.log(col)
         this.falling = true
         this.y += g * 1.8
         this.inGround = false
       }
-      
+
     },
     render: function () {
       attacks[0].opacity = 0
@@ -506,7 +532,7 @@ spriteImage.onload = () => {
           this.currentAnimation = this.animations["fattack"]
 
           if (this.attackTimer < 10) {
-            attacks[0].x = this.x 
+            attacks[0].x = this.x
             attacks[0].y = this.y
             attacks[0].opacity = 1
             attacks[0].setScale(-1, 1)
@@ -518,7 +544,7 @@ spriteImage.onload = () => {
         if (this.hurtFrames > 0) {
           this.currentAnimation = this.animations["fhurt"]
         }
-        
+
       } else {
         if (this.isMoving) {
           this.animStarted = false
@@ -559,11 +585,15 @@ spriteImage.onload = () => {
       }
       this.currentAnimation.update()
 
-      
+
       if (this.isSpawing) {
+        
         this.context.fillStyle = `rgb(245, 237, 186)`
         let radius = lerp(4, 8, this.spawningTimer)
+        this.context.beginPath()
         this.context.arc(4, 4, radius, 0, Math.PI * 2)
+        this.context.closePath()
+        this.context.fill()
         this.spawningTimer += 0.07 * this.spawningDir
         if (this.spawningTimer >= 1) {
           this.spawningDir *= -1
@@ -571,15 +601,16 @@ spriteImage.onload = () => {
         if (this.spawningTimer <= 0) {
           this.spawningDir *= -1
         }
-        this.context.fill()
+        
+        
       }
-      this.draw() 
+      this.draw()
     }
   })
 
-  const maptilesprites = document.createElement("canvas") 
+  const maptilesprites = document.createElement("canvas")
   const maptilespritescontext = maptilesprites.getContext("2d")
-  
+
   maptilespritescontext.clearRect(0, 0, 8, 8)
   maptilesprites.width = 8
   maptilesprites.height = 8
@@ -590,27 +621,27 @@ spriteImage.onload = () => {
   attacks[0].image = attackImg
 
   let mapcontext = undefined
-  const mapcanvas = document.createElement("canvas") 
-  mapcontext = mapcanvas.getContext("2d") 
-  mapcontext.drawImage(spriteImage, 0, 32, 40, 8, 0, 0, 40, 8) 
+  const mapcanvas = document.createElement("canvas")
+  mapcontext = mapcanvas.getContext("2d")
+  mapcontext.drawImage(spriteImage, 0, 32, 40, 8, 0, 0, 40, 8)
   maptilesprites.width = 8
   maptilesprites.height = 8
 
   maptilespritescontext.clearRect(0, 0, 8, 8)
   maptilesprites.width = 8
   maptilesprites.height = 8
-  maptilespritescontext.drawImage(spriteImage, 40, 8, 8, 8, 0, 0, 8, 8)       
+  maptilespritescontext.drawImage(spriteImage, 40, 8, 8, 8, 0, 0, 8, 8)
   let pageImage = new Image()
   pageImage.src = maptilesprites.toDataURL("image/png")
 
   maptilespritescontext.clearRect(0, 0, 32, 64)
   maptilesprites.width = 32
   maptilesprites.height = 64
-  maptilespritescontext.drawImage(spriteImage, 0, 40, 32, 64, 0, 0, 32, 64)       
+  maptilespritescontext.drawImage(spriteImage, 0, 40, 32, 64, 0, 0, 32, 64)
   let titleimage = new Image()
   titleimage.src = maptilesprites.toDataURL("image/png")
   title.image = titleimage
-   
+
   resetGameState = () => {
     quad.clear()
     enemiesInScene = []
@@ -630,24 +661,24 @@ spriteImage.onload = () => {
 
     for (let i = 0; i < 40; i++) {
       for (let j = 0; j < 8; j++) {
-        const pixelData = mapcontext.getImageData(i, j, 1, 1).data 
+        const pixelData = mapcontext.getImageData(i, j, 1, 1).data
         if (pixelData[0] === 245) {
           //console.log("drawing at ", i, " and ", j) 
-          
+
           maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
           const chance = Math.random()
           if (chance > 0.5) {
             //console.log('sprite 1', chance)
-            maptilespritescontext.drawImage(spriteImage, 32, 0, 8, 8, 0, 0, 8, 8) 
+            maptilespritescontext.drawImage(spriteImage, 32, 0, 8, 8, 0, 0, 8, 8)
           } else {
             //console.log('sprite 2', chance)
-            maptilespritescontext.drawImage(spriteImage, 40, 0, 8, 8, 0, 0, 8, 8) 
+            maptilespritescontext.drawImage(spriteImage, 40, 0, 8, 8, 0, 0, 8, 8)
           }
           if (chance > 0.5) {
             //console.log('sprite 1', chance)
             maptilespritescontext.translate(8, 0)
-            maptilespritescontext.scale(-1, 1) 
-          } 
+            maptilespritescontext.scale(-1, 1)
+          }
           let temp = new Image()
           temp.src = maptilesprites.toDataURL("image/png")
           landSprite.push(
@@ -668,8 +699,8 @@ spriteImage.onload = () => {
             id: 'enemy',
             width: 8,
             height: 8,
-            x: i*8,
-            y: j*8,
+            x: i * 8,
+            y: j * 8,
             dir: Math.random() > 0.5 ? -1 : 1,
             isHit: false,
             animations: enemyssheet.animations,
@@ -678,37 +709,37 @@ spriteImage.onload = () => {
               if ((Math.abs(this.x - pc.x) < 90)) {
                 const inQuad = quad.get(this)
                 //console.log("inQuad", inQuad.length)
-                
+
                 let col = false
-                
+
                 if (inQuad.length > 0) {
-                  
+
                   for (let i = 0; i < inQuad.length && !col; i++) {
                     let land = inQuad[i]
-                    if (land.id === 'land' && 
-                    this.y + 8 >= land.y && this.y + 7 <= land.y && 
-                    this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
+                    if (land.id === 'land' &&
+                      this.y + 8 >= land.y && this.y + 7 <= land.y &&
+                      this.x + 3 >= land.x && this.x + 1 <= land.x + 8) {
                       col = true
                     }
                   }
                 }
-    
+
                 if (!col) {
                   this.dir = this.dir * -1
                 }
-                
+
                 this.x += this.dir * 0.3
               }
-              
+
             },
             render: function () {
               this.currentAnimation.update()
               this.draw()
             }
           }))
-          console.log("setting slime", i*8, j*8)
+          console.log("setting slime", i * 8, j * 8)
         }
-  
+
         if (pixelData[0] === 88) {
           // Wolfman
           maptilespritescontext.clearRect(0, 0, maptilesprites.width, maptilesprites.height)
@@ -721,8 +752,8 @@ spriteImage.onload = () => {
             id: 'enemy',
             width: 8,
             height: 8,
-            x: i*8,
-            y: j*8,
+            x: i * 8,
+            y: j * 8,
             dir: 1,
             isHit: false,
             turnFrames: 0,
@@ -733,75 +764,75 @@ spriteImage.onload = () => {
             update: function () {
               if (Math.abs(this.x - pc.x) < 90) {
                 const inQuad = quad.get(this)
-              //console.log("inQuad", inQuad.length)
-              let col = false
-              
-              if (inQuad.length > 0) {
-                //console.log("slime touch ", inQuad.length)
-                for (let i = 0; i < inQuad.length && !col; i++) {
-                  let land = inQuad[i]
-                  const offset = this.dir === 1 ? 7 : 2
-                  if (land.id === 'land' &&  
-                  this.y + 9 >= land.y &&
-                  this.x + offset >= land.x && this.x + offset <= land.x + 8) {
-                    col = true
+                //console.log("inQuad", inQuad.length)
+                let col = false
+
+                if (inQuad.length > 0) {
+                  //console.log("slime touch ", inQuad.length)
+                  for (let i = 0; i < inQuad.length && !col; i++) {
+                    let land = inQuad[i]
+                    const offset = this.dir === 1 ? 7 : 2
+                    if (land.id === 'land' &&
+                      this.y + 9 >= land.y &&
+                      this.x + offset >= land.x && this.x + offset <= land.x + 8) {
+                      col = true
+                    }
                   }
                 }
-              }
-  
-              if (!col && this.turnFrames === 0) {
-                this.dir = this.dir * -1
-                this.turnFrames = 60
-              }
-  
-              if (this.turnFrames > 0) {
-                this.turnFrames--
-              }
-  
-              if (this.toShootFrames > 0 ) {
-                this.toShootFrames--
-                if (this.toShootFrames <= 0) {
-                  this.shootingFrames = 45
+
+                if (!col && this.turnFrames === 0) {
+                  this.dir = this.dir * -1
+                  this.turnFrames = 60
                 }
-              }
-  
-              if (this.shootingFrames > 0) {
-                this.shootingFrames--
-                if (this.shootingFrames === 15) {
-                  
-                  const dir = this.dir
-                  const pos = {x:this.x, y:this.y}
-                  // Arrow
-                  let newArrow = undefined
-                  console.log("new arrow at dir", dir)
-                  if (arrowPool.inactive.length > 0) {
-                    newArrow = arrowPool.inactive.pop()
-                  } else {
-                    newArrow = Sprite({})
+
+                if (this.turnFrames > 0) {
+                  this.turnFrames--
+                }
+
+                if (this.toShootFrames > 0) {
+                  this.toShootFrames--
+                  if (this.toShootFrames <= 0) {
+                    this.shootingFrames = 45
                   }
-                  console.log('active arrows', arrowPool.active.length)
-                  console.log('inactive arrows', arrowPool.inactive.length)
-                  arrowPool.active.push(newArrow)
-                  
-                    
-                    newArrow.dx= 0.8 * dir
-                    newArrow.x= dir === 1 ? pos.x: pos.x + 8
-                    newArrow.scaleX= dir 
-                    newArrow.y=pos.y
-                    newArrow.image= wolfAttackImg
-                    newArrow.update= function() {
+                }
+
+                if (this.shootingFrames > 0) {
+                  this.shootingFrames--
+                  if (this.shootingFrames === 15) {
+
+                    const dir = this.dir
+                    const pos = { x: this.x, y: this.y }
+                    // Arrow
+                    let newArrow = undefined
+                    console.log("new arrow at dir", dir)
+                    if (arrowPool.inactive.length > 0) {
+                      newArrow = arrowPool.inactive.pop()
+                    } else {
+                      newArrow = Sprite({})
+                    }
+                    console.log('active arrows', arrowPool.active.length)
+                    console.log('inactive arrows', arrowPool.inactive.length)
+                    arrowPool.active.push(newArrow)
+
+
+                    newArrow.dx = 0.8 * dir
+                    newArrow.x = dir === 1 ? pos.x : pos.x + 8
+                    newArrow.scaleX = dir
+                    newArrow.y = pos.y
+                    newArrow.image = wolfAttackImg
+                    newArrow.update = function () {
                       const inQuad = quad.get(newArrow)
                       let col = false
                       if (inQuad.length > 0) {
-                        
+
                         for (let i = 0; i < inQuad.length && !col; i++) {
                           let land = inQuad[i]
                           if (land.id === 'player') {
                             if (collided(newArrow, land)) {
-                                  col = true
+                              col = true
                             }
-                          }    
-                        }      
+                          }
+                        }
                       }
 
                       newArrow.advance()
@@ -814,21 +845,21 @@ spriteImage.onload = () => {
                         gameScene.removeChild(newArrow)
                         console.log("gamescene children", gameScene.children.length)
                       }
-                  }
-                  
-                  enemiesInScene.push(newArrow)
-                  gameScene.addChild(newArrow)     
-                } else {
+                    }
+
+                    enemiesInScene.push(newArrow)
+                    gameScene.addChild(newArrow)
+                  } else {
                     if (this.shootingFrames <= 0) {
                       this.toShootFrames = 65
                     }
+                  }
+                } else {
+
+                  this.x += this.dir * 0.3
                 }
-              } else {
-                
-                this.x += this.dir * 0.3
               }
-              }
-              
+
             },
             render: function () {
               if (this.dir === 1) {
@@ -836,25 +867,25 @@ spriteImage.onload = () => {
               } else {
                 this.currentAnimation = this.animations["fwolfman"]
               }
-              
+
               this.currentAnimation.update()
               this.draw()
             }
           }))
-          console.log("setting wolfman", i*8, j*8)
+          console.log("setting wolfman", i * 8, j * 8)
         }
-  
+
         if (pixelData[0] === 228) {
-          
+
           pages.push(Sprite({
             id: 'page',
             width: 8,
             height: 8,
-            x: i*8,
-            y: j*8,
+            x: i * 8,
+            y: j * 8,
             //anchor: {x:0, y:0},
-            yMax: j*8 - 3,
-            yMin: j*8,
+            yMax: j * 8 - 3,
+            yMin: j * 8,
             p: 0,
             dir: -1,
             image: pageImage,
@@ -864,22 +895,22 @@ spriteImage.onload = () => {
               const inQuad = quad.get(this)
               //console.log("inQuad", inQuad.length)
               let col = false
-              
+
               if (inQuad.length > 0) {
                 //console.log("slime touch ", inQuad.length)
                 for (let i = 0; i < inQuad.length && !col; i++) {
                   let land = inQuad[i]
                   if (land.id === 'player') {
                     if (collided(this, land)) {
-                          
-                          console.log("PAGE COLLECTED")
-                          col = true
-                          this.isHit = true
-                        }
+
+                      console.log("PAGE COLLECTED")
+                      col = true
+                      this.isHit = true
+                    }
                   }
                 }
               }
-              
+
               this.y = lerp(this.yMin, this.yMax, this.p)
               this.p += 0.03 * this.dir
               if (this.p >= 1) {
@@ -890,14 +921,14 @@ spriteImage.onload = () => {
               }
             }
           }))
-          console.log('page at', i*8, j*8)
+          console.log('page at', i * 8, j * 8)
         }
       }
     }
-    
+
     const bgGroundRocks = []
     for (let i = 0; i < 30; i++) {
-      bgGroundRocks.push({x:i * 20 + Math.random() * 10, y:randInt(110, 124)})
+      bgGroundRocks.push({ x: i * 20 + Math.random() * 10, y: randInt(110, 124) })
     }
 
     let bg = Sprite({
@@ -905,17 +936,19 @@ spriteImage.onload = () => {
       y: 0,
       width: 450,
       height: 128,
-      update: function() {
-        
+      update: function () {
+
         this.y = camFocus.y - 64
       },
-      render: function() {
+      render: function () {
+        
         this.context.fillStyle = `rgb(62, 33, 55)`
         this.context.fillRect(0, 0, 450, 128)
         this.context.fillStyle = `rgb(52, 133, 157)`
         this.context.fillRect(0, 0, 450, 25)
         this.context.fillStyle = `rgb(126, 196, 193)`
         this.context.fillRect(0, 25, 450, 15)
+        //this.context.clearRect(0, 0, canvas.width, canvas.height)
         
         this.context.fillStyle = `rgb(154, 99, 72)`
         this.context.beginPath()
@@ -925,20 +958,22 @@ spriteImage.onload = () => {
           this.context.lineTo(point.x, point.y)
         }
         this.context.lineTo(bgGroundRocks[bgGroundRocks.length - 1].x, 128)
-        
+
         this.context.closePath()
-        
+
         this.context.fill()
         
         //this.context.fill()
       }
     })
     //camFocus.addChild(bg)
-    gameScene = new Scene({id: 'game',
-    
-    children:[bg, ...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]})
+    gameScene = new Scene({
+      id: 'game',
+
+      children: [bg, ...landSprite, ...enemiesInScene, deadFX, pc, ...attacks, ...pages, camFocus]
+    })
   }
-  
+
   resetGameState()
 }
 
@@ -946,6 +981,7 @@ spriteImage.onload = () => {
 let endAnimation = false
 let firstLoad = true
 let delay = 0
+let batTimer = 120
 const states = []
 states.push(GameLoop({
   update() {
@@ -955,7 +991,7 @@ states.push(GameLoop({
       } else {
         firstLoad = false
       }
-      delay = 30 
+      delay = 30
     }
 
     if (delay > 0) {
@@ -968,7 +1004,7 @@ states.push(GameLoop({
     } else {
       title.update()
     }
-    
+
   },
   render() {
     title.render()
@@ -976,18 +1012,67 @@ states.push(GameLoop({
     showText("RAGNATIC", 45, 94, 5, 'rgb(245, 237, 186)')
     showText("2020", 55, 100, 5, 'rgb(245, 237, 186)')
   }
-})) 
+}))
 
 states.push(GameLoop({
   update() {
-    if (gameScene!==undefined) {
+    if (gameScene !== undefined) {
       quad.clear()
       quad.add(pc)
       for (let i = 0; i < landSprite.length; i++) {
         quad.add(landSprite[i])
       }
+
+      if (batTimer > 0) {
+        batTimer--
+      } else {
+        batTimer = randInt(120, 200)
+        
+        const dir = Math.random() > 0.5 ? -1 : 1
+        let startX = dir > 0 ? pc.x - 80 : pc.x + 80
+        let startY = randInt(20, 80)   
+        const newBat = Sprite({
+          id: 'enemy',
+          width: 8,
+          height: 8,
+          x: startX,
+          y: startY,
+          p: 0,
+          dir: dir,
+          yDir: 1,
+          isHit: false,
+          animations: batAnimation.animations,
+          currentAnimation: batAnimation.animations["bat"],
+          update: function () {
+            if ((Math.abs(this.x - pc.x) < 100)) {
+              this.x += this.dir * 0.5
+              this.y = lerp(startY-5, startY+5, this.p)
+              this.p += this.yDir * 0.025
+              if (this.p <= 0) {
+                this.yDir = this.yDir * -1
+              }
+
+              if (this.p >= 1) {
+                this.yDir = this.yDir * -1
+              }
+            } else {
+              enemiesInScene.splice(enemiesInScene.indexOf(newBat), 1)
+              gameScene.removeChild(newBat)
+            }
+
+          },
+          render: function () {
+            this.currentAnimation.update()
+            this.draw()
+          }
+        })
+        console.log("newBat", newBat.dir, newBat.x, newBat.y)
+        enemiesInScene.push(newBat)
+        gameScene.addChild(newBat)
+      }
+
       //console.log("enemiesinscene length", enemiesInScene.length)
-      for (let i = enemiesInScene.length - 1; i >= 0 ; i--) {
+      for (let i = enemiesInScene.length - 1; i >= 0; i--) {
         const enemy = enemiesInScene[i]
         if (enemy.isHit) {
           deadFX.x = enemy.x
@@ -997,7 +1082,7 @@ states.push(GameLoop({
           enemiesInScene.splice(enemiesInScene.indexOf(enemy), 1)
         } else {
           quad.add(enemiesInScene[i])
-        }        
+        }
       }
       let lastPage = undefined
       for (let i = pages.length - 1; i >= 0; i--) {
@@ -1007,17 +1092,17 @@ states.push(GameLoop({
           console.log(pages.length - 1, 'pages left')
           gameScene.removeChild(page)
           pages.splice(pages.indexOf(page), 1)
-          
+
         } else {
           quad.add(pages[i])
         }
-        
+
       }
       //console.log("quad length", quad.)
       if (pc.y > 128) {
-        pc.hp = "111"  
+        pc.hp = "111"
         pc.life = pc.life.substr(0, pc.life.length - 1)
-      
+
         if (pc.life.length === 0) {
           states[1].stop()
           states[0].start()
@@ -1052,28 +1137,28 @@ states.push(GameLoop({
             states[1].stop()
             states[2].start()
           }
-          
+
         }
-        
-        
+
+
       }
 
       gameScene.update()
       gameScene.lookAt(camFocus)
     }
-    
+
   },
   render() {
-    if (gameScene!==undefined) {
-      
-      
-      
+    if (gameScene !== undefined) {
+
+
+
       gameScene.render()
       showText("LIFE", 0, 10, 5, 'rgb(245, 237, 186)')
       showText(pc.life, 16, 10, 5, 'rgb(100, 125, 52)')
       showText("HP", 0, 16, 5, 'rgb(245, 237, 186)')
       showText(pc.hp, 16, 16, 5, 'rgb(210, 100, 113)')
-      
+
     }
   },
 }))
@@ -1081,7 +1166,7 @@ states.push(GameLoop({
 states.push(GameLoop({
   update() {
     if (keyPressed("x")) {
-      delay = 30 
+      delay = 30
     }
 
     if (delay > 0) {
