@@ -39,6 +39,7 @@ const quad = Quadtree({
   maxObjects: 10
 })
 
+const states = []
 let gameScene = undefined
 
 let landSprite = []
@@ -206,6 +207,9 @@ let resetGameState = undefined
 /**
  * 
  */
+let assetsLoaded = 0
+const slimes = [] 
+const wolfmen = []
 const spriteImage = new Image()
 spriteImage.src = spritesheet
 spriteImage.onload = () => {
@@ -222,151 +226,10 @@ spriteImage.onload = () => {
   const totalanimcontext = totalanimcanvas.getContext('2d')
   totalanimcontext.drawImage(spriteImage, 0, 0, 32, 24, 0, 0, 32, 24)
   totalanimcontext.drawImage(flippedcanvas, 0, 0, 32, 24, 0, 24, 32, 24)
-  let ssheetImage = new Image()
-  ssheetImage.src = totalanimcanvas.toDataURL("image/png")
-  let ssheet = SpriteSheet({
-    image: ssheetImage,
-    frameWidth: 8,
-    frameHeight: 8,
-    animations: {
-      idle: {
-        frames: [0, 1],
-        frameRate: 1,
-        loop: true,
-      },
-      walk: {
-        frames: [2, 3],
-        frameRate: 5,
-        loop: true
-      },
-      fidle: {
-        frames: [15, 14],
-        frameRate: 1,
-        loop: true,
-      },
-      fwalk: {
-        frames: [13, 12],
-        frameRate: 5,
-        loop: true
-      },
-      jump: {
-        frames: [4, 5],
-        frameRate: 5,
-        loop: true
-      },
-      fall: {
-        frames: [6, 7],
-        frameRate: 5,
-        loop: true
-      },
-      fjump: {
-        frames: [19, 18],
-        frameRate: 5,
-        loop: true
-      },
-      ffall: {
-        frames: [17, 16],
-        frameRate: 5,
-        loop: true
-      },
-      attack: {
-        frames: [8, 9, 9, 9],
-        frameRate: 5,
-        loop: false
-      },
-      fattack: {
-        frames: [23, 22, 22, 22],
-        frameRate: 5,
-        loop: false
-      },
-      hurt: {
-        frames: [10, 11],
-        frameRate: 3,
-        loop: false
-      },
-      fhurt: {
-        frames: [21, 20],
-        frameRate: 3,
-        loop: false
-      },
-    },
-  })
-
-  totalanimcontext.clearRect(0, 0, totalanimcanvas.width, totalanimcanvas.height)
-  totalanimcanvas.height = 8
-  totalanimcanvas.width = 16
-  totalanimcontext.drawImage(spriteImage, 0, 24, 16, 8, 0, 0, 16, 8)
-  let enemyssheetImage = new Image()
-  enemyssheetImage.src = totalanimcanvas.toDataURL("image/png")
-  let enemyssheet = SpriteSheet({
-    image: enemyssheetImage,
-    frameWidth: 8,
-    frameHeight: 8,
-    animations: {
-      slime: {
-        frames: [0, 1],
-        frameRate: 6,
-        loop: true,
-      },
-    }
-  })
-
-  totalanimcontext.clearRect(0, 0, totalanimcanvas.width, totalanimcanvas.height)
-  totalanimcanvas.height = 8
-  totalanimcanvas.width = 16
-  totalanimcontext.drawImage(spriteImage, 32, 24, 16, 8, 0, 0, 16, 8)
-  let enemyssheetImage3 = new Image()
-  enemyssheetImage3.src = totalanimcanvas.toDataURL("image/png")
-  batAnimation = SpriteSheet({
-    image: enemyssheetImage3,
-    frameWidth: 8,
-    frameHeight: 8,
-    animations: {
-      bat: {
-        frames: [0, 1],
-        frameRate: 3,
-        loop: true,
-      },
-    }
-  })
-
-  flippedcontext.clearRect(0, 0, 16, 8)
-  flippedcanvas.height = 8
-  flippedcanvas.width = 16
-  flippedcontext.translate(16, 0)
-  flippedcontext.scale(-1, 1)
-  flippedcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
-  totalanimcontext.clearRect(0, 0, 32, 16)
-  totalanimcanvas.height = 16
-  totalanimcanvas.width = 16
-  totalanimcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
-  totalanimcontext.drawImage(flippedcanvas, 0, 0, 16, 8, 0, 8, 16, 8)
-  let enemyssheetImage2 = new Image()
-  enemyssheetImage2.src = totalanimcanvas.toDataURL("image/png")
-  let enemyssheet2 = SpriteSheet({
-    image: enemyssheetImage2,
-    frameWidth: 8,
-    frameHeight: 8,
-    animations: {
-      wolfman: {
-        frames: [0, 1],
-        frameRate: 5,
-        loop: true,
-      },
-      fwolfman: {
-        frames: [3, 2],
-        frameRate: 5,
-        loop: true,
-      },
-    }
-  })
-
+  
   const jumpHeight = 16
   const timeToApex = 80
   const g = (2 * jumpHeight) / (timeToApex ^ 2)
-
-  
-
   pc = Sprite({
     id: 'player',
     x: 10,
@@ -378,8 +241,7 @@ spriteImage.onload = () => {
     height: 8,
     hp: "111",
     life: "111",
-    animations: ssheet.animations,
-    currentAnimation: ssheet.animations['idle'],
+    
     inGround: false,
     isMoving: false,
     hurtFrames: 0,
@@ -462,8 +324,6 @@ spriteImage.onload = () => {
           this.jumping = false
         }
       }
-
-
 
       const inQuad = quad.get(this)
       //console.log("inQuad", inQuad.length)
@@ -585,7 +445,6 @@ spriteImage.onload = () => {
       }
       this.currentAnimation.update()
 
-
       if (this.isSpawing) {
         
         this.context.fillStyle = `rgb(245, 237, 186)`
@@ -607,6 +466,175 @@ spriteImage.onload = () => {
       this.draw()
     }
   })
+  
+  let ssheetImage = new Image()
+  ssheetImage.src = totalanimcanvas.toDataURL("image/png")
+  ssheetImage.onload = ()=>{
+    assetsLoaded++
+    let ssheet = SpriteSheet({
+      image: ssheetImage,
+      frameWidth: 8,
+      frameHeight: 8,
+      animations: {
+        idle: {
+          frames: [0, 1],
+          frameRate: 1,
+          loop: true,
+        },
+        walk: {
+          frames: [2, 3],
+          frameRate: 5,
+          loop: true
+        },
+        fidle: {
+          frames: [15, 14],
+          frameRate: 1,
+          loop: true,
+        },
+        fwalk: {
+          frames: [13, 12],
+          frameRate: 5,
+          loop: true
+        },
+        jump: {
+          frames: [4, 5],
+          frameRate: 5,
+          loop: true
+        },
+        fall: {
+          frames: [6, 7],
+          frameRate: 5,
+          loop: true
+        },
+        fjump: {
+          frames: [19, 18],
+          frameRate: 5,
+          loop: true
+        },
+        ffall: {
+          frames: [17, 16],
+          frameRate: 5,
+          loop: true
+        },
+        attack: {
+          frames: [8, 9, 9, 9],
+          frameRate: 5,
+          loop: false
+        },
+        fattack: {
+          frames: [23, 22, 22, 22],
+          frameRate: 5,
+          loop: false
+        },
+        hurt: {
+          frames: [10, 11],
+          frameRate: 3,
+          loop: false
+        },
+        fhurt: {
+          frames: [21, 20],
+          frameRate: 3,
+          loop: false
+        },
+      },
+    })
+
+    pc.animations= ssheet.animations,
+    pc.currentAnimation= ssheet.animations['idle']
+  }
+  
+  totalanimcontext.clearRect(0, 0, totalanimcanvas.width, totalanimcanvas.height)
+  totalanimcanvas.height = 8
+  totalanimcanvas.width = 16
+  totalanimcontext.drawImage(spriteImage, 0, 24, 16, 8, 0, 0, 16, 8)
+  let enemyssheetImage = new Image()
+  enemyssheetImage.src = totalanimcanvas.toDataURL("image/png")
+  let enemyssheet = undefined
+  enemyssheetImage.onload = () => {
+    assetsLoaded++
+    enemyssheet = SpriteSheet({
+      image: enemyssheetImage,
+      frameWidth: 8,
+      frameHeight: 8,
+      animations: {
+        slime: {
+          frames: [0, 1],
+          frameRate: 6,
+          loop: true,
+        },
+      }
+    })
+
+    for (let i = 0; i < slimes.length; i++) {
+      slimes[i].enemyssheet.animations,
+      slimes[i].enemyssheet.animations['slime']
+    }
+    
+  }
+  
+
+  totalanimcontext.clearRect(0, 0, totalanimcanvas.width, totalanimcanvas.height)
+  totalanimcanvas.height = 8
+  totalanimcanvas.width = 16
+  totalanimcontext.drawImage(spriteImage, 32, 24, 16, 8, 0, 0, 16, 8)
+  let enemyssheetImage3 = new Image()
+  enemyssheetImage3.src = totalanimcanvas.toDataURL("image/png")
+  enemyssheetImage3.onload = () => {
+    assetsLoaded++
+    batAnimation = SpriteSheet({
+      image: enemyssheetImage3,
+      frameWidth: 8,
+      frameHeight: 8,
+      animations: {
+        bat: {
+          frames: [0, 1],
+          frameRate: 3,
+          loop: true,
+        },
+      }
+    })
+  }
+  
+
+  flippedcontext.clearRect(0, 0, 16, 8)
+  flippedcanvas.height = 8
+  flippedcanvas.width = 16
+  flippedcontext.translate(16, 0)
+  flippedcontext.scale(-1, 1)
+  flippedcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
+  totalanimcontext.clearRect(0, 0, 32, 16)
+  totalanimcanvas.height = 16
+  totalanimcanvas.width = 16
+  totalanimcontext.drawImage(spriteImage, 16, 24, 16, 8, 0, 0, 16, 8)
+  totalanimcontext.drawImage(flippedcanvas, 0, 0, 16, 8, 0, 8, 16, 8)
+  let enemyssheetImage2 = new Image()
+  enemyssheetImage2.src = totalanimcanvas.toDataURL("image/png")
+  let enemyssheet2 = undefined
+  enemyssheetImage2.onload = () => {
+    assetsLoaded++
+    enemyssheet2 = SpriteSheet({
+    image: enemyssheetImage2,
+    frameWidth: 8,
+    frameHeight: 8,
+    animations: {
+      wolfman: {
+        frames: [0, 1],
+        frameRate: 5,
+        loop: true,
+      },
+      fwolfman: {
+        frames: [3, 2],
+        frameRate: 5,
+        loop: true,
+      },
+    }
+  })
+
+    
+  }
+  
+
+  
 
   const maptilesprites = document.createElement("canvas")
   const maptilespritescontext = maptilesprites.getContext("2d")
@@ -737,6 +765,7 @@ spriteImage.onload = () => {
               this.draw()
             }
           }))
+          slimes.push(enemiesInScene[enemiesInScene.length - 1])
           console.log("setting slime", i * 8, j * 8)
         }
 
@@ -872,6 +901,7 @@ spriteImage.onload = () => {
               this.draw()
             }
           }))
+          wolfmen.push(enemiesInScene[enemiesInScene.length - 1])
           console.log("setting wolfman", i * 8, j * 8)
         }
 
@@ -974,7 +1004,8 @@ spriteImage.onload = () => {
     })
   }
 
-  resetGameState()
+
+  
 }
 
 
@@ -982,7 +1013,7 @@ let endAnimation = false
 let firstLoad = true
 let delay = 0
 let batTimer = 120
-const states = []
+
 states.push(GameLoop({
   update() {
     if (keyPressed("x")) {
@@ -1183,5 +1214,16 @@ states.push(GameLoop({
   }
 }))
 
-states[0].start()
+
+const wait = setInterval(()=> {
+  if (assetsLoaded === 4) {
+    console.log("asset load complete")
+    resetGameState()
+    states[0].start()
+    clearInterval(wait)
+  } else {
+    console.log("waiting for asset load")
+  }
+}, 1)
+
 
